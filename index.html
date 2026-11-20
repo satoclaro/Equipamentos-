@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor eMTA &amp; Gateway 192.168.0.1</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --accent: #0f62fe;
+            --accent-dark: #0043ce;
+            --bg-color: #f4f6f9;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            padding-bottom: 48px;
+            background: var(--bg-color);
+            color: #333;
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .header-title h2 {
+            color: var(--accent);
+            margin: 0;
+            font-size: 19px;
+            line-height: 1.2;
+        }
+        .card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 16px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 13px;
+            display: block;
+            margin-top: 10px;
+            color: #555;
+        }
+        .copy-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 4px;
+        }
+        .copy-row input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+            background: #fff;
+            margin-top: 0;
+        }
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: var(--accent-dark);
+        }
+        button.secondary {
+            background: #444;
+            margin-top: 8px;
+        }
+        button.secondary:hover {
+            background: #2f2f2f;
+        }
+        button.copy-btn {
+            width: auto;
+            margin-top: 0;
+            padding: 12px 14px;
+            font-size: 13px;
+            white-space: nowrap;
+            background: #198754;
+        }
+        button.copy-btn:hover {
+            background: #146c43;
+        }
+        button.copy-btn.copied {
+            background: #0d6efd;
+        }
+        textarea {
+            width: 100%;
+            min-height: 82px;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 13px;
+            font-family: monospace;
+        }
+
+        /* Câmera com mira de precisão e toque para focar (padrão index_2.html) */
+        #reader-container {
+            display: none;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .camera-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 340px;
+            height: 210px;
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid var(--accent);
+            background: #000;
+            cursor: pointer;
+        }
+        #reader {
+            width: 100%;
+            height: 100%;
+        }
+        #reader video, #video-fallback {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+        #video-fallback {
+            display: none;
+        }
+        #reader__scan_region img, #reader__dashboard {
+            display: none !important;
+        }
+        .mira-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mira-box {
+            width: 90%;
+            height: 86px;
+            border: 2px solid #00ff66;
+            border-radius: 6px;
+            box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.52);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mira-laser {
+            width: 96%;
+            height: 2px;
+            background: #ff1e1e;
+            box-shadow: 0 0 6px #ff1e1e;
+        }
+        .mira-label {
+            position: absolute;
+            top: -20px;
+            background: rgba(0, 0, 0, 0.78);
+            color: #00ff66;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.4px;
+        }
+        .camera-controls {
+            display: flex;
+            gap: 8px;
+            max-width: 340px;
+            margin: 8px auto 0 auto;
+        }
+        .camera-controls button {
+            margin-top: 0;
+            padding: 9px 10px;
+            font-size: 12px;
+            background: #2b2b2b;
+        }
+        #scanner-status {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: bold;
+            margin-top: 6px;
+            min-height: 16px;
+        }
+
+        .footer-info {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin: 18px 0 8px 0;
+            padding: 8px;
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">
+        <h2>Leitor eMTA &amp; Página 192.168.0.1</h2>
+    </div>
+
+    <div class="card">
+        <button type="button" class="secondary" onclick="toggleScanner()">📷 Ligar e Desligar Câmera</button>
+
+        <div id="reader-container">
+            <div class="camera-wrapper" onclick="capturarDaMiraAoClicar()">
+                <div id="reader"></div>
+                <video id="video-fallback" autoplay playsinline muted></video>
+                <div class="mira-overlay">
+                    <div class="mira-box">
+                        <span class="mira-label">TOQUE NA TELA PARA CAPTURAR NA LINHA DE MIRA</span>
+                        <div class="mira-laser"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="camera-controls">
+                <button type="button" onclick="capturarDaMiraAoClicar()">📸 Ler Mira Agora</button>
+                <button type="button" onclick="forcarFoco()">🎯 Focar</button>
+                <button type="button" id="btn-flash" onclick="toggleFlash()">🔦 Luz</button>
+            </div>
+            <div id="scanner-status">Alinhe a linha vermelha no código desejado e toque na tela da câmera para capturar.</div>
+        </div>
+
+        <label for="texto-lido">Texto Reconhecido / Colado da Etiqueta</label>
+        <textarea id="texto-lido" placeholder="Ex: URL: http://192.168.0.1 | User: admin | Pass: 1234 | SSID: WiFi_Casa | WiFi Pass: Senha123"></textarea>
+        <button type="button" onclick="interpretarTexto(document.getElementById('texto-lido').value)">⚡ Reconhecer e Preencher Campos</button>
+    </div>
+
+    <div class="card">
+        <label for="url-gateway">Endereço da Página (192.168.0.1)</label>
+        <div class="copy-row">
+            <input type="text" id="url-gateway" value="http://192.168.0.1">
+            <button type="button" class="copy-btn" onclick="copiarCampo('url-gateway', this)">📋 Copiar</button>
+        </div>
+
+        <label for="login-pagina">Login / Usuário da Página (192.168.0.1)</label>
+        <div class="copy-row">
+            <input type="text" id="login-pagina" placeholder="Ex: admin">
+            <button type="button" class="copy-btn" onclick="copiarCampo('login-pagina', this)">📋 Copiar</button>
+        </div>
+
+        <label for="senha-pagina">Senha / Password da Página (192.168.0.1)</label>
+        <div class="copy-row">
+            <input type="text" id="senha-pagina" placeholder="Senha de acesso ao gateway">
+            <button type="button" class="copy-btn" onclick="copiarCampo('senha-pagina', this)">📋 Copiar</button>
+        </div>
+
+        <label for="wifi-ssid">Login / Nome da Rede Wi-Fi (SSID)</label>
+        <div class="copy-row">
+            <input type="text" id="wifi-ssid" placeholder="Nome da rede Wi-Fi">
+            <button type="button" class="copy-btn" onclick="copiarCampo('wifi-ssid', this)">📋 Copiar</button>
+        </div>
+
+        <label for="wifi-senha">Password / Senha do Wi-Fi</label>
+        <div class="copy-row">
+            <input type="text" id="wifi-senha" placeholder="Senha do Wi-Fi">
+            <button type="button" class="copy-btn" onclick="copiarCampo('wifi-senha', this)">📋 Copiar</button>
+        </div>
+
+        <button type="button" class="secondary" onclick="limparCampos()">🧹 Limpar Campos</button>
+    </div>
+
+    <footer class="footer-info" id="rodape-versao">Criado por: Técnico Fernando Sato - Versão 1.1 - 20/11/2026 20:05</footer>
+
+<script>
+    let html5QrCode = null;
+    let streamFallback = null;
+    let usandoFallback = false;
+    let cameraAtiva = false;
+    let flashAtivo = false;
+    let videoTrackAtual = null;
+    let intervaloLeituraRapida = null;
+    let ocrWorker = null;
+    let ocrOcupado = false;
+    let cliqueEmAndamento = false;
+
+    const VERSAO_APP = "1.1";
+    const DATA_HORA_ATUALIZACAO = "20/11/2026 20:05";
+
+    function obterDataAtual() {
+        const agora = new Date();
+        const dia = String(agora.getDate()).padStart(2, '0');
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const ano = agora.getFullYear();
+        const hora = String(agora.getHours()).padStart(2, '0');
+        const min = String(agora.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${hora}:${min}`;
+    }
+
+    function atualizarRodape() {
+        const rodape = document.getElementById('rodape-versao');
+        if (rodape) {
+            const stamp = DATA_HORA_ATUALIZACAO || obterDataAtual();
+            rodape.innerText = `Criado por: Técnico Fernando Sato - Versão ${VERSAO_APP} - ${stamp}`;
+        }
+    }
+    atualizarRodape();
+    document.addEventListener('DOMContentLoaded', atualizarRodape);
+
+    function getVideoElement() {
+        if (usandoFallback) {
+            return document.getElementById('video-fallback');
+        }
+        return document.querySelector('#reader video') || document.getElementById('video-fallback');
+    }
+
+    function copiarCampo(idCampo, btnEl) {
+        const input = document.getElementById(idCampo);
+        if (!input) return;
+        const valor = input.value;
+        if (!valor) return;
+
+        const confirmar = () => {
+            if (!btnEl) return;
+            const textoOriginal = btnEl.innerText;
+            btnEl.innerText = "✓ Copiado";
+            btnEl.classList.add("copied");
+            setTimeout(() => {
+                btnEl.innerText = textoOriginal;
+                btnEl.classList.remove("copied");
+            }, 1300);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(valor).then(confirmar).catch(() => {
+                input.select();
+                document.execCommand("copy");
+                confirmar();
+            });
+        } else {
+            input.select();
+            document.execCommand("copy");
+            confirmar();
+        }
+    }
+
+    function limparCampos() {
+        document.getElementById('url-gateway').value = 'http://192.168.0.1';
+        document.getElementById('login-pagina').value = '';
+        document.getElementById('senha-pagina').value = '';
+        document.getElementById('wifi-ssid').value = '';
+        document.getElementById('wifi-senha').value = '';
+        document.getElementById('texto-lido').value = '';
+        const statusDiv = document.getElementById('scanner-status');
+        if (statusDiv) statusDiv.innerText = 'Campos limpos.';
+    }
+
+    function unescapeWifi(val) {
+        return (val || '').replace(/\([\;,:"'])/g, '$1');
+    }
+
+    function interpretarTexto(textoBruto) {
+        if (!textoBruto || !textoBruto.trim()) return false;
+        const texto = textoBruto.trim();
+        let reconheceuAlgo = false;
+
+        document.getElementById('texto-lido').value = texto;
+
+        if (/^WIFI:/i.test(texto)) {
+            const mSsid = texto.match(/S:((?:\.|[^;])*)/i);
+            const mPass = texto.match(/P:((?:\.|[^;])*)/i);
+            if (mSsid && mSsid[1]) {
+                document.getElementById('wifi-ssid').value = unescapeWifi(mSsid[1]);
+                reconheceuAlgo = true;
+            }
+            if (mPass && mPass[1]) {
+                document.getElementById('wifi-senha').value = unescapeWifi(mPass[1]);
+                reconheceuAlgo = true;
+            }
+        }
+
+        const mUrl = texto.match(/(?:https?:\/\/)?(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?(?:\/[^\s;,]*)?/i);
+        if (mUrl && mUrl[0]) {
+            const rawUrl = mUrl[0].trim();
+            document.getElementById('url-gateway').value = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'http://' + rawUrl;
+            reconheceuAlgo = true;
+        }
+
+        const linhas = texto.split(/?
+|[;|]+/).map(l => l.trim()).filter(Boolean);
+        for (const linha of linhas) {
+            const sepIdx = linha.search(/[:=]/);
+            if (sepIdx === -1) continue;
+            const chave = linha.slice(0, sepIdx).trim().toLowerCase();
+            const valor = linha.slice(sepIdx + 1).trim();
+            if (!valor) continue;
+
+            if (/(admin.*(user|login|usu[aá]rio)|usu[aá]rio.*admin|login|user|username)/i.test(chave) && !/wifi|ssid/i.test(chave)) {
+                document.getElementById('login-pagina').value = valor;
+                reconheceuAlgo = true;
+            } else if (/(admin.*(pass|senha|pwd)|senha.*admin|access\s*key|device\s*password)/i.test(chave)) {
+                document.getElementById('senha-pagina').value = valor;
+                reconheceuAlgo = true;
+            } else if (/(ssid|wi-?fi\s*name|nome.*wi-?fi|rede\s*wi-?fi)/i.test(chave)) {
+                document.getElementById('wifi-ssid').value = valor;
+                reconheceuAlgo = true;
+            } else if (/(wi-?fi.*(pass|senha|key|psk)|senha.*wi-?fi|wpa\s*key|password|passphrase|key)/i.test(chave)) {
+                document.getElementById('wifi-senha').value = valor;
+                reconheceuAlgo = true;
+            }
+        }
+
+        return reconheceuAlgo;
+    }
+
+    async function configurarResolucaoEFoco() {
+        try {
+            const videoEl = getVideoElement();
+            if (videoEl && videoEl.srcObject) {
+                const tracks = videoEl.srcObject.getVideoTracks();
+                if (tracks && tracks.length > 0) {
+                    videoTrackAtual = tracks[0];
+                    const caps = videoTrackAtual.getCapabilities ? videoTrackAtual.getCapabilities() : {};
+                    const constraints = { advanced: [] };
+
+                    if (caps.focusMode && Array.isArray(caps.focusMode)) {
+                        if (caps.focusMode.includes('continuous')) {
+                            constraints.advanced.push({ focusMode: 'continuous' });
+                        } else if (caps.focusMode.includes('single-shot')) {
+                            constraints.advanced.push({ focusMode: 'single-shot' });
+                        }
+                    }
+
+                    if (constraints.advanced.length > 0 && videoTrackAtual.applyConstraints) {
+                        await videoTrackAtual.applyConstraints(constraints);
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    async function forcarFoco() {
+        const statusDiv = document.getElementById('scanner-status');
+        try {
+            if (!videoTrackAtual) {
+                const videoEl = getVideoElement();
+                if (videoEl && videoEl.srcObject) {
+                    const tracks = videoEl.srcObject.getVideoTracks();
+                    if (tracks && tracks.length > 0) videoTrackAtual = tracks[0];
+                }
+            }
+            if (videoTrackAtual && videoTrackAtual.applyConstraints) {
+                const caps = videoTrackAtual.getCapabilities ? videoTrackAtual.getCapabilities() : {};
+                if (caps.focusMode) {
+                    if (caps.focusMode.includes('single-shot')) {
+                        await videoTrackAtual.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+                    }
+                    if (caps.focusMode.includes('continuous')) {
+                        setTimeout(() => {
+                            videoTrackAtual.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+                        }, 400);
+                    }
+                    statusDiv.innerText = "🎯 Ajustando foco na etiqueta...";
+                    return;
+                }
+            }
+            statusDiv.innerText = "Aproxime ou afaste levemente o celular (~10-15 cm) para focar.";
+        } catch (e) {
+            statusDiv.innerText = "Ajuste a distância (~10-15 cm) para ajudar o foco da câmera.";
+        }
+    }
+
+    async function toggleFlash() {
+        const statusDiv = document.getElementById('scanner-status');
+        const btnFlash = document.getElementById('btn-flash');
+        try {
+            if (!videoTrackAtual) {
+                const videoEl = getVideoElement();
+                if (videoEl && videoEl.srcObject) {
+                    const tracks = videoEl.srcObject.getVideoTracks();
+                    if (tracks && tracks.length > 0) videoTrackAtual = tracks[0];
+                }
+            }
+            if (!videoTrackAtual || !videoTrackAtual.applyConstraints) {
+                statusDiv.innerText = "Lanterna não suportada neste aparelho.";
+                return;
+            }
+            const caps = videoTrackAtual.getCapabilities ? videoTrackAtual.getCapabilities() : {};
+            if (!caps.torch) {
+                statusDiv.innerText = "Lanterna não disponível nesta câmera.";
+                return;
+            }
+            flashAtivo = !flashAtivo;
+            await videoTrackAtual.applyConstraints({ advanced: [{ torch: flashAtivo }] });
+            btnFlash.innerText = flashAtivo ? "🔦 Apagar Luz" : "🔦 Luz";
+        } catch (e) {
+            statusDiv.innerText = "Não foi possível alternar a lanterna.";
+        }
+    }
+
+    async function obterOcrWorker() {
+        if (ocrWorker) return ocrWorker;
+        if (window.Tesseract) {
+            try {
+                ocrWorker = await Tesseract.createWorker('eng', 1, {
+                    logger: () => {}
+                });
+                await ocrWorker.setParameters({
+                    tessedit_pageseg_mode: '6'
+                });
+            } catch (e) {
+                ocrWorker = null;
+            }
+        }
+        return ocrWorker;
+    }
+
+    function finalizarComSucesso(textoBruto) {
+        if (!cameraAtiva || !textoBruto) return false;
+        const statusDiv = document.getElementById('scanner-status');
+        const reconheceu = interpretarTexto(textoBruto);
+        if (reconheceu) {
+            if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+            statusDiv.innerText = "✅ Dados reconhecidos e preenchidos!";
+            pararScanner();
+            return true;
+        }
+        return false;
+    }
+
+    function criarCanvasRotacionado(origemCanvas, angulo) {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        if (angulo === 90 || angulo === 270) {
+            c.width = origemCanvas.height;
+            c.height = origemCanvas.width;
+        } else {
+            c.width = origemCanvas.width;
+            c.height = origemCanvas.height;
+        }
+        ctx.translate(c.width / 2, c.height / 2);
+        ctx.rotate((angulo * Math.PI) / 180);
+        ctx.drawImage(origemCanvas, -origemCanvas.width / 2, -origemCanvas.height / 2);
+        return c;
+    }
+
+    async function capturarDaMiraAoClicar() {
+        const statusDiv = document.getElementById('scanner-status');
+        const videoEl = getVideoElement();
+        if (!cameraAtiva) return;
+
+        forcarFoco().catch(() => {});
+
+        if (cliqueEmAndamento || !videoEl || videoEl.readyState < 2) {
+            return;
+        }
+
+        cliqueEmAndamento = true;
+        try {
+            const vw = videoEl.videoWidth;
+            const vh = videoEl.videoHeight;
+            if (!vw || !vh) return;
+
+            const cropW = Math.floor(vw * 0.90);
+            const cropH = Math.floor(vh * 0.38);
+            const cropX = Math.floor((vw - cropW) / 2);
+            const cropY = Math.floor((vh - cropH) / 2);
+
+            const canvasBase = document.createElement('canvas');
+            canvasBase.width = cropW;
+            canvasBase.height = cropH;
+            const ctx = canvasBase.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(videoEl, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+            if ('BarcodeDetector' in window) {
+                try {
+                    const detector = new BarcodeDetector({
+                        formats: ['qr_code', 'code_128', 'code_39', 'code_93', 'itf', 'codabar']
+                    });
+                    for (const ang of [0, 90, 270]) {
+                        if (!cameraAtiva) return;
+                        const cRot = ang === 0 ? canvasBase : criarCanvasRotacionado(canvasBase, ang);
+                        const barcodes = await detector.detect(cRot);
+                        for (const bc of barcodes) {
+                            if (bc && bc.rawValue && finalizarComSucesso(bc.rawValue)) {
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (!ocrOcupado && ocrWorker && cameraAtiva) {
+                ocrOcupado = true;
+                try {
+                    for (const ang of [0, 90]) {
+                        if (!cameraAtiva) break;
+                        const cRot = ang === 0 ? canvasBase : criarCanvasRotacionado(canvasBase, ang);
+                        const { data: { text } } = await ocrWorker.recognize(cRot);
+                        if (text && finalizarComSucesso(text)) {
+                            return;
+                        }
+                    }
+                } catch (e) {
+                } finally {
+                    ocrOcupado = false;
+                }
+            }
+
+            if (cameraAtiva && statusDiv) {
+                statusDiv.innerText = "Continuando leitura... Mire no código correto e toque se precisar.";
+            }
+        } catch (e) {
+            if (cameraAtiva && statusDiv) {
+                statusDiv.innerText = "Câmera ativa. Continue mirando no código desejado.";
+            }
+        } finally {
+            cliqueEmAndamento = false;
+        }
+    }
+
+    function iniciarLeituraHibrida() {
+        const videoEl = getVideoElement();
+        const statusDiv = document.getElementById('scanner-status');
+        if (!videoEl) return;
+
+        if (intervaloLeituraRapida) {
+            clearInterval(intervaloLeituraRapida);
+            intervaloLeituraRapida = null;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        let detectorNativo = null;
+        if ('BarcodeDetector' in window) {
+            try {
+                detectorNativo = new BarcodeDetector({
+                    formats: ['qr_code', 'code_128', 'code_39', 'code_93', 'itf', 'codabar']
+                });
+            } catch (e) {
+                detectorNativo = null;
+            }
+        }
+
+        obterOcrWorker().catch(() => {});
+
+        let contadorCiclos = 0;
+        let cicloEmExecucao = false;
+
+        intervaloLeituraRapida = setInterval(async () => {
+            if (!cameraAtiva || cicloEmExecucao || !videoEl || videoEl.readyState < 2) return;
+            cicloEmExecucao = true;
+
+            try {
+                contadorCiclos++;
+                const vw = videoEl.videoWidth;
+                const vh = videoEl.videoHeight;
+                if (!vw || !vh) return;
+
+                const cropW = Math.floor(vw * 0.90);
+                const cropH = Math.floor(vh * 0.36);
+                const cropX = Math.floor((vw - cropW) / 2);
+                const cropY = Math.floor((vh - cropH) / 2);
+
+                canvas.width = cropW;
+                canvas.height = cropH;
+                ctx.drawImage(videoEl, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+                if (detectorNativo) {
+                    try {
+                        const barcodes = await detectorNativo.detect(canvas);
+                        for (const bc of barcodes) {
+                            if (bc && bc.rawValue && finalizarComSucesso(bc.rawValue)) {
+                                return;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                if (contadorCiclos % 4 === 0 && !ocrOcupado && ocrWorker) {
+                    ocrOcupado = true;
+                    try {
+                        const { data: { text } } = await ocrWorker.recognize(canvas);
+                        if (text && finalizarComSucesso(text)) {
+                            return;
+                        }
+                    } catch (e) {
+                    } finally {
+                        ocrOcupado = false;
+                    }
+                }
+            } catch (e) {
+            } finally {
+                cicloEmExecucao = false;
+            }
+        }, 180);
+    }
+
+    async function iniciarStreamFallback() {
+        const videoFallback = document.getElementById('video-fallback');
+        const readerDiv = document.getElementById('reader');
+        const statusDiv = document.getElementById('scanner-status');
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Câmera não suportada neste navegador.");
+        }
+
+        streamFallback = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+            audio: false
+        });
+
+        usandoFallback = true;
+        if (readerDiv) readerDiv.style.display = 'none';
+        if (videoFallback) {
+            videoFallback.style.display = 'block';
+            videoFallback.srcObject = streamFallback;
+            await videoFallback.play().catch(() => {});
+        }
+
+        const tracks = streamFallback.getVideoTracks();
+        if (tracks && tracks.length > 0) {
+            videoTrackAtual = tracks[0];
+        }
+
+        cameraAtiva = true;
+        statusDiv.innerText = "Alinhe a linha vermelha no código desejado e toque na tela da câmera para capturar.";
+        setTimeout(() => {
+            configurarResolucaoEFoco();
+            iniciarLeituraHibrida();
+        }, 250);
+    }
+
+    function toggleScanner() {
+        const container = document.getElementById('reader-container');
+        const statusDiv = document.getElementById('scanner-status');
+        const readerDiv = document.getElementById('reader');
+        const videoFallback = document.getElementById('video-fallback');
+
+        if (!cameraAtiva) {
+            container.style.display = 'block';
+            usandoFallback = false;
+            if (readerDiv) readerDiv.style.display = 'block';
+            if (videoFallback) videoFallback.style.display = 'none';
+            flashAtivo = false;
+            videoTrackAtual = null;
+            document.getElementById('btn-flash').innerText = "🔦 Luz";
+            statusDiv.innerText = "Alinhe a linha vermelha no código desejado e toque na tela da câmera para capturar.";
+
+            const formatosSuportados = [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODABAR
+            ];
+
+            html5QrCode = new Html5Qrcode("reader", {
+                formatsToSupport: formatosSuportados,
+                useBarCodeDetectorIfSupported: false,
+                verbose: false
+            });
+
+            const cameraConfig = {
+                facingMode: "environment",
+                focusMode: "continuous"
+            };
+
+            html5QrCode.start(
+                cameraConfig,
+                {
+                    fps: 20,
+                    videoConstraints: {
+                        facingMode: { ideal: "environment" },
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 },
+                        focusMode: { ideal: "continuous" }
+                    },
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        return {
+                            width: Math.floor(viewfinderWidth * 0.88),
+                            height: 44
+                        };
+                    }
+                },
+                (decodedText) => {
+                    if (decodedText) {
+                        finalizarComSucesso(decodedText);
+                    }
+                },
+                (errorMessage) => {}
+            ).then(() => {
+                cameraAtiva = true;
+                setTimeout(() => {
+                    configurarResolucaoEFoco();
+                    iniciarLeituraHibrida();
+                }, 300);
+            }).catch(async (err) => {
+                try {
+                    await iniciarStreamFallback();
+                } catch (fbErr) {
+                    alert("Erro ao acessar a câmera. Verifique as permissões do navegador: " + err);
+                    container.style.display = 'none';
+                    cameraAtiva = false;
+                }
+            });
+        } else {
+            pararScanner();
+        }
+    }
+
+    function pararScanner() {
+        const container = document.getElementById('reader-container');
+        const videoFallback = document.getElementById('video-fallback');
+
+        if (intervaloLeituraRapida) {
+            clearInterval(intervaloLeituraRapida);
+            intervaloLeituraRapida = null;
+        }
+        videoTrackAtual = null;
+        flashAtivo = false;
+
+        if (streamFallback) {
+            streamFallback.getTracks().forEach(t => t.stop());
+            streamFallback = null;
+        }
+        if (videoFallback) {
+            videoFallback.srcObject = null;
+            videoFallback.style.display = 'none';
+        }
+
+        if (html5QrCode && cameraAtiva && !usandoFallback) {
+            html5QrCode.stop().then(() => {
+                container.style.display = 'none';
+                cameraAtiva = false;
+                usandoFallback = false;
+            }).catch(() => {
+                container.style.display = 'none';
+                cameraAtiva = false;
+                usandoFallback = false;
+            });
+        } else {
+            container.style.display = 'none';
+            cameraAtiva = false;
+            usandoFallback = false;
+        }
+    }
+</script>
+
+</body>
+</html>
