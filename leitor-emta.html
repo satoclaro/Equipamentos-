@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leitor eMTA &amp; 192.168.0.1 — Técnico Telecom</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b101b;
+      --surface: #131c2e;
+      --surface-2: #1a263d;
+      --border: #283858;
+      --text: #eef2f9;
+      --muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+      padding-bottom: 64px;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #131c2e 0%, #0f2942 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--primary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    button:hover {
+      border-color: var(--primary);
+      background: #223252;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: #06101c;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    button.danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    button.danger:hover {
+      background: rgba(239, 68, 68, 0.28);
+    }
+
+    button.copy-btn {
+      padding: 9px 13px;
+      font-size: 0.85rem;
+      background: rgba(56, 189, 248, 0.14);
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #7dd3fc;
+      white-space: nowrap;
+    }
+
+    button.copy-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    button.copy-btn.copied {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.5);
+      color: #86efac;
+    }
+
+    #qr-reader {
+      width: 100%;
+      max-width: 440px;
+      margin: 10px auto;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      font-family: inherit;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.84rem;
+    }
+
+    .grid-fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 580px) {
+      .grid-fields {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .field-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-box.full {
+      grid-column: 1 / -1;
+    }
+
+    .field-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .field-control {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field-control input {
+      flex: 1;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .status-msg {
+      font-size: 0.84rem;
+      margin-top: 8px;
+      min-height: 20px;
+      color: var(--primary);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #0f172a;
+      border: 1px solid var(--success);
+      color: #86efac;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 999;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .open-link {
+      font-size: 0.8rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .open-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>📡 Leitor eMTA &amp; Gateway <span class="badge">192.168.0.1</span></h1>
+        <p class="hint">Leitura rápida de QR Code / etiqueta e cópia direta para configuração em campo</p>
+      </div>
+      <div class="btn-row" style="margin-bottom:0;">
+        <button id="btn-clear-all" class="danger" type="button">Limpar Campos</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="card-title">
+        <span>1. Captura via QR Code / Imagem</span>
+      </div>
+      <div class="btn-row">
+        <button id="btn-start-cam" class="primary" type="button">📷 Abrir Câmera</button>
+        <button id="btn-stop-cam" type="button" style="display:none;">⏹ Parar Câmera</button>
+        <label class="btn-row" style="margin-bottom:0;">
+          <button id="btn-upload-img" type="button">🖼️ Ler Imagem / Foto</button>
+          <input id="file-qr-input" type="file" accept="image/*" style="display:none;" />
+        </label>
+      </div>
+      <div id="qr-reader"></div>
+      <div id="scan-status" class="status-msg"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <span>2. Colar Texto da Etiqueta / Payload QR</span>
+        <button id="btn-parse-text" class="primary" type="button">⚡ Extrair Dados</button>
+      </div>
+      <textarea id="raw-input" placeholder="Exemplos aceitos:
+WIFI:T:WPA;S:FIBRA_CASA_2G;P:Senha123456;;
+ou texto da etiqueta:
+URL/IP: http://192.168.0.1
+Admin User: admin
+Admin Pass: S3nh@Adm!
+SSID: MinhaRede_5G
+Password: SenhaWiFi2026
+MAC: A1:B2:C3:D4:E5:F6"></textarea>
+      <div class="hint">Reconhece formato padrão <code>WIFI:T:...;S:...;P:...;;</code> e rótulos comuns de etiquetas de modem/eMTA (IP/URL, usuário/login, senha admin, SSID, senha Wi-Fi, MAC).</div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <span>3. Campos Prontos para Copiar</span>
+      </div>
+
+      <div class="grid-fields">
+        <div class="field-box full">
+          <div class="field-label">
+            <span>URL / Endereço de Acesso</span>
+            <a id="link-gateway" class="open-link" href="http://192.168.0.1" target="_blank" rel="noopener noreferrer">Abrir em nova aba ↗</a>
+          </div>
+          <div class="field-control">
+            <input id="field-url" type="text" value="http://192.168.0.1" />
+            <button class="copy-btn" data-target="field-url" type="button">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">
+            <span>Login / Usuário Página (192.168.0.1)</span>
+          </div>
+          <div class="field-control">
+            <input id="field-admin-user" type="text" placeholder="ex: admin" />
+            <button class="copy-btn" data-target="field-admin-user" type="button">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">
+            <span>Senha Página (192.168.0.1)</span>
+          </div>
+          <div class="field-control">
+            <input id="field-admin-pass" type="text" placeholder="Senha administrativa" />
+            <button class="copy-btn" data-target="field-admin-pass" type="button">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">
+            <span>Nome da Rede Wi-Fi (SSID)</span>
+          </div>
+          <div class="field-control">
+            <input id="field-wifi-ssid" type="text" placeholder="Nome do Wi-Fi" />
+            <button class="copy-btn" data-target="field-wifi-ssid" type="button">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">
+            <span>Senha do Wi-Fi (Password / Key)</span>
+          </div>
+          <div class="field-control">
+            <input id="field-wifi-pass" type="text" placeholder="Senha do Wi-Fi" />
+            <button class="copy-btn" data-target="field-wifi-pass" type="button">📋 Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-box full">
+          <div class="field-label">
+            <span>MAC / Observação Extra (opcional)</span>
+          </div>
+          <div class="field-control">
+            <input id="field-extra" type="text" placeholder="MAC, Serial, SSID 5G, etc." />
+            <button class="copy-btn" data-target="field-extra" type="button">📋 Copiar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">Copiado para a área de transferência!</div>
+
+  <script>
+    const els = {
+      url: document.getElementById("field-url"),
+      adminUser: document.getElementById("field-admin-user"),
+      adminPass: document.getElementById("field-admin-pass"),
+      wifiSsid: document.getElementById("field-wifi-ssid"),
+      wifiPass: document.getElementById("field-wifi-pass"),
+      extra: document.getElementById("field-extra"),
+      rawInput: document.getElementById("raw-input"),
+      btnParse: document.getElementById("btn-parse-text"),
+      btnClear: document.getElementById("btn-clear-all"),
+      btnStartCam: document.getElementById("btn-start-cam"),
+      btnStopCam: document.getElementById("btn-stop-cam"),
+      btnUploadImg: document.getElementById("btn-upload-img"),
+      fileInput: document.getElementById("file-qr-input"),
+      qrReaderDiv: document.getElementById("qr-reader"),
+      scanStatus: document.getElementById("scan-status"),
+      linkGateway: document.getElementById("link-gateway"),
+      toast: document.getElementById("toast")
+    };
+
+    let html5QrCode = null;
+    let isCameraRunning = false;
+
+    function showToast(msg) {
+      els.toast.textContent = msg;
+      els.toast.classList.add("show");
+      setTimeout(() => els.toast.classList.remove("show"), 1800);
+    }
+
+    function syncGatewayLink() {
+      const rawUrl = els.url.value.trim();
+      if (!rawUrl) {
+        els.linkGateway.href = "http://192.168.0.1";
+        return;
+      }
+      if (/^https?:\/\//i.test(rawUrl)) {
+        els.linkGateway.href = rawUrl;
+      } else {
+        els.linkGateway.href = "http://" + rawUrl;
+      }
+    }
+
+    els.url.addEventListener("input", syncGatewayLink);
+
+    async function copyText(text, btn) {
+      if (!text) {
+        showToast("Campo vazio");
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const temp = document.createElement("textarea");
+          temp.value = text;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand("copy");
+          document.body.removeChild(temp);
+        }
+        const orig = btn.textContent;
+        btn.textContent = "✓ Copiado";
+        btn.classList.add("copied");
+        showToast("Copiado para a área de transferência!");
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove("copied");
+        }, 1400);
+      } catch (err) {
+        showToast("Falha ao copiar");
+      }
+    }
+
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+        if (input) copyText(input.value, btn);
+      });
+    });
+
+    function unescapeWifiValue(str) {
+      return (str || "").replace(/\([\;,:"'])/g, "$1");
+    }
+
+    function extractDataFromPayload(text) {
+      if (!text || !text.trim()) return;
+      const trimmed = text.trim();
+
+      // Formato padrão WIFI:T:WPA;S:NomeRede;P:Senha;;
+      if (/^WIFI:/i.test(trimmed)) {
+        const ssidMatch = trimmed.match(/S:((?:\.|[^;])*)/i);
+        const passMatch = trimmed.match(/P:((?:\.|[^;])*)/i);
+        if (ssidMatch && ssidMatch[1]) {
+          els.wifiSsid.value = unescapeWifiValue(ssidMatch[1]);
+        }
+        if (passMatch && passMatch[1]) {
+          els.wifiPass.value = unescapeWifiValue(passMatch[1]);
+        }
+      }
+
+      // IP ou URL
+      const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?(?:\/[^\s;,]*)?/i);
+      if (urlMatch) {
+        const val = urlMatch[0];
+        els.url.value = /^https?:\/\//i.test(val) ? val : "http://" + val;
+        syncGatewayLink();
+      }
+
+      const lines = trimmed.split(/?
+/);
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx === -1) continue;
+        const key = line.slice(0, idx).trim().toLowerCase();
+        const val = line.slice(idx + 1).trim();
+        if (!val) continue;
+
+        if (/(admin.*(user|login|usu[aá]rio)|usu[aá]rio.*admin|login|user|username)/i.test(key) && !/wifi|ssid/i.test(key)) {
+          els.adminUser.value = val;
+        } else if (/(admin.*(pass|senha|pwd)|senha.*admin|access\s*key|device\s*password)/i.test(key)) {
+          els.adminPass.value = val;
+        } else if (/(ssid|wi-?fi\s*name|nome.*wi-?fi|rede\s*wi-?fi)/i.test(key)) {
+          els.wifiSsid.value = val;
+        } else if (/(wi-?fi.*(pass|senha|key|psk)|senha.*wi-?fi|wpa\s*key|password|passphrase|key)/i.test(key)) {
+          els.wifiPass.value = val;
+        } else if (/(mac|serial|sn|5g)/i.test(key)) {
+          els.extra.value = els.extra.value ? `${els.extra.value} | ${line.trim()}` : line.trim();
+        }
+      }
+    }
+
+    els.btnParse.addEventListener("click", () => {
+      extractDataFromPayload(els.rawInput.value);
+      showToast("Dados extraídos!");
+    });
+
+    els.btnClear.addEventListener("click", () => {
+      els.url.value = "http://192.168.0.1";
+      els.adminUser.value = "";
+      els.adminPass.value = "";
+      els.wifiSsid.value = "";
+      els.wifiPass.value = "";
+      els.extra.value = "";
+      els.rawInput.value = "";
+      els.scanStatus.textContent = "";
+      syncGatewayLink();
+      showToast("Campos limpos");
+    });
+
+    async function startCamera() {
+      if (isCameraRunning) return;
+      if (typeof Html5Qrcode === "undefined") {
+        els.scanStatus.textContent = "Biblioteca de QR não carregada (verifique conexão com a internet ou cole o texto manualmente).";
+        return;
+      }
+      els.qrReaderDiv.style.display = "block";
+      els.scanStatus.textContent = "Iniciando câmera...";
+
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("qr-reader");
+        }
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          (decodedText) => {
+            els.rawInput.value = decodedText;
+            extractDataFromPayload(decodedText);
+            els.scanStatus.textContent = "QR Code lido com sucesso!";
+            showToast("QR Code lido e campos preenchidos!");
+            stopCamera();
+          },
+          () => {}
+        );
+        isCameraRunning = true;
+        els.btnStartCam.style.display = "none";
+        els.btnStopCam.style.display = "inline-flex";
+        els.scanStatus.textContent = "Aponte a câmera para o QR Code da etiqueta.";
+      } catch (err) {
+        els.scanStatus.textContent = "Não foi possível acessar a câmera: " + (err && err.message ? err.message : err);
+      }
+    }
+
+    async function stopCamera() {
+      if (!html5QrCode || !isCameraRunning) return;
+      try {
+        await html5QrCode.stop();
+        isCameraRunning = false;
+        els.btnStartCam.style.display = "inline-flex";
+        els.btnStopCam.style.display = "none";
+        els.qrReaderDiv.style.display = "none";
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    els.btnStartCam.addEventListener("click", startCamera);
+    els.btnStopCam.addEventListener("click", stopCamera);
+
+    els.btnUploadImg.addEventListener("click", () => els.fileInput.click());
+
+    els.fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (typeof Html5Qrcode === "undefined") {
+        els.scanStatus.textContent = "Biblioteca de QR não carregada.";
+        return;
+      }
+      els.scanStatus.textContent = "Lendo imagem...";
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("qr-reader");
+        }
+        const decodedText = await html5QrCode.scanFile(file, true);
+        els.rawInput.value = decodedText;
+        extractDataFromPayload(decodedText);
+        els.scanStatus.textContent = "QR Code extraído da imagem!";
+        showToast("QR Code lido da imagem!");
+      } catch (err) {
+        els.scanStatus.textContent = "Nenhum QR Code encontrado na imagem. Você pode colar o texto da etiqueta no campo abaixo.";
+      } finally {
+        e.target.value = "";
+      }
+    });
+  </script>
+</body>
+</html>
