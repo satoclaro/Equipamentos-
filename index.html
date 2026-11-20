@@ -513,7 +513,8 @@ MAC: A1:B2:C3:D4:E5:F6"></textarea>
         syncGatewayLink();
       }
 
-      const lines = trimmed.split(/?
+      const lines = trimmed.split(/
+?
 /);
       for (const line of lines) {
         const idx = line.indexOf(":");
