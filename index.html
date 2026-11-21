@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "2.5";
+      const APP_VERSION = "2.6";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2012,13 +2012,18 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
+        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
         // 9. Usuário / Login do 192.168.0.1 (sempre vem depois de "usuário:" ou ":")
         let capturedUser = "";
         const userLine = lines.find((l) => /(?:Usu[aáirl1]{2,}|User(?:name)?|Login)\s*[:;=-]/i.test(l));
         if (userLine) {
           const afterColon = userLine.split(":").slice(1).join(":").trim();
+          const claroNetSpaced = afterColon.match(/^((?:CLARO|NET)\s+[A-Za-z0-9_-]{3,})/i);
           const tokenMatch = afterColon.match(/^([A-Za-z0-9_@.-]{2,})/);
-          if (tokenMatch) {
+          if (claroNetSpaced) {
+            capturedUser = claroNetSpaced[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "CLARO_" : "NET_"));
+          } else if (tokenMatch) {
             capturedUser = tokenMatch[1].trim();
           }
         }
@@ -2038,8 +2043,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           setIfFound("field_adminLogin", capturedUser, true);
         }
 
-        // 10. Senha do EMTA (sempre vem depois do Usuário) + Redes Wi-Fi (SOMENTE quando COMEÇA com Claro_ ou NET_)
-        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        // 10. Senha do EMTA (sempre vem depois do Usuário) + Redes Wi-Fi (2.4GHz / 5GHz)
         let adminPassCaptured = "";
         let wifi24Ssid = "";
         let wifi24Pass = "";
@@ -2133,6 +2137,16 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           if (afterUserRegex) {
             adminPassCaptured = afterUserRegex[1].trim();
           }
+        }
+
+        // Extração direta de 2.4GHz e 5GHz mesmo quando há "Usuario:" ou "Senha:" na mesma linha
+        const m24Direct = text.match(/2\.4\s*G(?:hz)?\s*[:;=-]?\s*([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)?)(?=\s+(?:5(?:\.0)?\s*G|Usu[aáirl1]{2,}|Senha|IP|S\/N|MAC)\b|$)/i);
+        if (m24Direct && !wifi24Ssid) {
+          wifi24Ssid = m24Direct[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "Claro_" : "NET_"));
+        }
+        const m5gDirect = text.match(/5(?:\.0)?\s*G(?:hz)?\s*[:;=-]?\s*([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)?)(?=\s+(?:Usu[aáirl1]{2,}|Senha|IP|S\/N|MAC)\b|$)/i);
+        if (m5gDirect && !wifi5gSsid) {
+          wifi5gSsid = m5gDirect[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "Claro_" : "NET_"));
         }
 
         // Fallback estrito: qualquer ocorrência começando com Claro_ ou NET_ após 2.4, 5.0 ou GHz
