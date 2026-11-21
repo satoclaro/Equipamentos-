@@ -1,10 +1,12 @@
-# EMTA Config & Scanner Pro (v1.1)
+# EMTA Config & Scanner Pro (v1.2)
 
 Ferramenta HTML para técnicos de telecomunicações em campo.
 
-## Novidades da Versão 1.1
-- **Diagnóstico de Conectividade / Ping / Reachability**: executa testes de alcance HTTP/latência (RTT) ao alvo (padrão `192.168.0.1`) com log detalhado e status visual.
-- **Senha Padrão Claro Fixa**: campo dedicado com `Claro_123456789` e botão de cópia rápida para a área de transferência.
-- **Indicador Rápido de Níveis RF**: avaliação automática para **Downstream (dBmV)**, **Upstream (dBmV)** e **SNR (dB)** com status (`NORMAL`, `ALERTA`, `FORA DA FAIXA`/`BAIXO`) e botão para copiar os níveis RF.
-- **Importar JSON e Backup CSV**: importa registros de um arquivo `.json` e gera backup `.csv` (compatível com Excel/Google Sheets, UTF-8 com BOM e separador `;`).
-- **Rodapé Atualizado**: `Criado por Fernando Sato - Versão 1.1 - 20.11.26 - 20:54`.
+## Novidades da Versão 1.2
+- **Correção e Diagnóstico da Câmera**: adiciona fallback automático de restrições de vídeo, exibição explícita do `<video>`, diagnóstico detalhado de permissão/contexto seguro (`HTTPS` / `localhost`) e botão **Câmera Nativa / Foto** (`<input type="file" accept="image/*" capture="environment">`) com leitura de código da foto capturada.
+- **Níveis RF da Empresa**:
+  - **Tx**: `38 dBmV` à `51 dBmV`
+  - **Rx**: `-12 dBmV` à `12 dBmV`
+  - **SNR DS**: maior que `35 dB` (`> 35 dB`)
+  - **SNR UP**: maior que `27 dB` (`> 27 dB`)
+- **Rodapé Atualizado**: `Criado por Fernando Sato - Versão 1.2 - 20.11.26 - 21:11`.
