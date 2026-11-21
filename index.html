@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Câmera — EMTA Config & Scanner Pro</title>
+  <title>EMTA Config & Scanner Pro - Telecom Field Tool</title>
+  <!-- Biblioteca ZXing para leitura de QR Code / Códigos de barras via câmera -->
   <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --bg-dark: #0b1120;
@@ -18,6 +17,7 @@
       --accent-primary: #0ea5e9;
       --accent-primary-hover: #0284c7;
       --accent-secondary: #10b981;
+      --accent-secondary-hover: #059669;
       --accent-warning: #f59e0b;
       --accent-danger: #ef4444;
       --border-color: #263349;
@@ -45,14 +45,19 @@
       flex-direction: column;
     }
 
+    /* Header */
     header {
       background: linear-gradient(135deg, #0f172a 0%, #172554 100%);
       border-bottom: 1px solid var(--border-color);
       padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(8px);
     }
 
     .header-inner {
-      max-width: 960px;
+      max-width: 1120px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
@@ -78,11 +83,13 @@
       font-weight: 800;
       font-size: 1.1rem;
       color: #ffffff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
     }
 
     .brand h1 {
-      font-size: 1.15rem;
+      font-size: 1.2rem;
       font-weight: 700;
+      letter-spacing: -0.01em;
     }
 
     .brand p {
@@ -90,6 +97,14 @@
       color: var(--text-muted);
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -99,16 +114,16 @@
       border-radius: var(--radius-md);
       border: 1px solid transparent;
       font-family: inherit;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.18s ease;
+      text-decoration: none;
       user-select: none;
     }
 
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
+    .btn:active {
+      transform: scale(0.98);
     }
 
     .btn-primary {
@@ -116,8 +131,17 @@
       color: #ffffff;
     }
 
-    .btn-primary:hover:not(:disabled) {
+    .btn-primary:hover {
       background-color: var(--accent-primary-hover);
+    }
+
+    .btn-success {
+      background-color: var(--accent-secondary);
+      color: #ffffff;
+    }
+
+    .btn-success:hover {
+      background-color: var(--accent-secondary-hover);
     }
 
     .btn-warning {
@@ -126,10 +150,18 @@
       border-color: rgba(245, 158, 11, 0.35);
     }
 
+    .btn-warning:hover {
+      background-color: rgba(245, 158, 11, 0.25);
+    }
+
     .btn-danger {
       background-color: rgba(239, 68, 68, 0.16);
       color: #f87171;
       border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-danger:hover {
+      background-color: rgba(239, 68, 68, 0.25);
     }
 
     .btn-ghost {
@@ -138,20 +170,67 @@
       border-color: var(--border-color);
     }
 
+    .btn-ghost:hover {
+      background-color: #293852;
+    }
+
     .btn-sm {
       padding: 7px 11px;
       font-size: 0.8rem;
       border-radius: 8px;
     }
 
+    /* Main Container */
     main {
       flex: 1;
-      max-width: 960px;
+      max-width: 1120px;
       width: 100%;
       margin: 0 auto;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
+    /* Quick Gateway Banner */
+    .gateway-banner {
+      background: linear-gradient(90deg, rgba(14, 165, 233, 0.14), rgba(16, 185, 129, 0.14));
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .gateway-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .gateway-ip {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .gateway-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Cards & Sections */
     .card {
       background-color: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -172,32 +251,14 @@
     }
 
     .card-title {
-      font-size: 1.05rem;
+      font-size: 1.08rem;
       font-weight: 700;
-    }
-
-    .status-pill {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background-color: rgba(148, 163, 184, 0.15);
-      color: var(--text-muted);
+      gap: 8px;
     }
 
-    .status-pill.live {
-      background-color: rgba(16, 185, 129, 0.16);
-      color: #34d399;
-    }
-
-    .status-pill.warn {
-      background-color: rgba(245, 158, 11, 0.16);
-      color: #fbbf24;
-    }
-
+    /* Camera Section */
     .camera-stage {
       display: grid;
       grid-template-columns: 1fr;
@@ -278,7 +339,7 @@
       color: var(--text-muted);
     }
 
-    .result-box {
+    .parser-box {
       background-color: var(--bg-input);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
@@ -288,13 +349,13 @@
       gap: 12px;
     }
 
-    .result-box label {
+    .parser-box label {
       font-size: 0.85rem;
       font-weight: 600;
       color: var(--text-muted);
     }
 
-    textarea, input[type="text"] {
+    textarea, input[type="text"], input[type="number"], select {
       width: 100%;
       background-color: var(--bg-card);
       color: var(--text-main);
@@ -303,13 +364,349 @@
       padding: 10px 12px;
       font-family: var(--font-mono);
       font-size: 0.88rem;
+      transition: border-color 0.15s ease;
+    }
+
+    textarea:focus, input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
     }
 
     textarea {
       resize: vertical;
-      min-height: 110px;
+      min-height: 88px;
     }
 
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background-color: rgba(148, 163, 184, 0.15);
+      color: var(--text-muted);
+    }
+
+    .status-pill.live {
+      background-color: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+    }
+
+    .status-pill.warn {
+      background-color: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+    }
+
+    .status-pill.bad {
+      background-color: rgba(239, 68, 68, 0.16);
+      color: #f87171;
+    }
+
+    /* Diagnostics Section */
+    .diag-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 820px) {
+      .diag-grid {
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+    }
+
+    .diag-panel {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .diag-log {
+      background-color: #020617;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      min-height: 92px;
+      max-height: 170px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .claro-default-box {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.85));
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    /* EMTA Copy & Configure Grid */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 640px) {
+      .fields-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 960px) {
+      .fields-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .field-card {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s ease;
+    }
+
+    .field-card:hover {
+      border-color: #3b5278;
+    }
+
+    .field-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .field-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .field-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field-input-row input {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+    }
+
+    .copy-btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(14, 165, 233, 0.4);
+      background-color: rgba(14, 165, 233, 0.14);
+      color: #38bdf8;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+    }
+
+    .copy-btn.copied {
+      background-color: var(--accent-secondary);
+      border-color: var(--accent-secondary);
+      color: #ffffff;
+    }
+
+    /* RF Signals Section */
+    .rf-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 640px) {
+      .rf-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 920px) {
+      .rf-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .rf-card {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .rf-status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      background-color: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted);
+    }
+
+    .rf-status-badge.ok {
+      background-color: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .rf-status-badge.warn {
+      background-color: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .rf-status-badge.bad {
+      background-color: rgba(239, 68, 68, 0.16);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .rf-summary-bar {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Archive Section */
+    .archive-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+      max-width: 420px;
+    }
+
+    .archive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .archive-item {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .archive-item-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .archive-title {
+      font-weight: 700;
+      font-size: 0.98rem;
+      color: #f1f5f9;
+    }
+
+    .archive-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .archive-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .tag {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #cbd5e1;
+    }
+
+    .archive-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-muted);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+    }
+
+    /* Toast Notification */
     .toast {
       position: fixed;
       bottom: 22px;
@@ -334,13 +731,19 @@
       transform: translateY(0);
     }
 
+    /* Footer */
     footer {
       background-color: #080d18;
       border-top: 1px solid var(--border-color);
-      padding: 14px 20px;
+      padding: 16px 20px;
       text-align: center;
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
+    }
+
+    #footerStamp {
+      font-weight: 600;
+      color: #cbd5e1;
       font-family: var(--font-mono);
     }
   </style>
@@ -349,22 +752,81 @@
   <header>
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-badge">CAM</div>
+        <div class="brand-badge">EMTA</div>
         <div>
-          <h1>Sistema de Câmera</h1>
-          <p>Leitura de QR Code / Código de Barras / Foto</p>
+          <h1>EMTA Config &amp; Scanner Pro</h1>
+          <p>Assistente de Campo Telecom • Diagnóstico, Sinais RF, Wi-Fi &amp; Arquivo EMTA</p>
         </div>
       </div>
-      <button id="btnToggleCamera" class="btn btn-primary" type="button">
-        📷 Abrir Câmera
-      </button>
+      <div class="header-actions">
+        <button id="btnToggleCamera" class="btn btn-primary" type="button">
+          📷 Abrir Câmera
+        </button>
+        <a href="http://192.168.0.1" target="_blank" rel="noopener noreferrer" class="btn btn-success">
+          🌐 Abrir 192.168.0.1
+        </a>
+      </div>
     </div>
   </header>
 
   <main>
-    <section class="card" aria-label="Sistema de câmera">
+    <!-- Barra Rápida 192.168.0.1 -->
+    <section class="gateway-banner" aria-label="Acesso rápido ao gateway">
+      <div class="gateway-info">
+        <span style="font-weight: 600; font-size: 0.92rem;">Página de Configuração do Modem / EMTA:</span>
+        <span id="gatewayUrlText" class="gateway-ip">http://192.168.0.1</span>
+      </div>
+      <div class="gateway-buttons">
+        <button type="button" class="btn btn-ghost btn-sm" data-copy-target="gatewayUrlText" data-copy-type="text">
+          📋 Copiar IP / URL
+        </button>
+        <a href="http://192.168.0.1" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          ↗ Acessar 192.168.0.1
+        </a>
+      </div>
+    </section>
+
+    <!-- 1. Diagnóstico, Teste de Conectividade / Ping / Reachability + Senha Padrão Claro -->
+    <section class="card" aria-label="Diagnóstico de conectividade e senha padrão Claro">
       <div class="card-header">
-        <div class="card-title">📷 Câmera &amp; Leitor de Código</div>
+        <div class="card-title">
+          🩺 1. Diagnóstico de Conectividade (Ping / Reachability) &amp; Senha Padrão Claro
+        </div>
+        <span id="diagBadge" class="status-pill">Aguardando teste</span>
+      </div>
+
+      <div class="diag-grid">
+        <div class="diag-panel">
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+            <input id="diagTargetIp" type="text" value="192.168.0.1" placeholder="IP ou URL (ex: 192.168.0.1)" style="flex:1; min-width:170px;" />
+            <button id="btnPingTest" type="button" class="btn btn-primary btn-sm">📡 Testar Ping / Reachability</button>
+            <button id="btnClearDiag" type="button" class="btn btn-ghost btn-sm">Limpar</button>
+          </div>
+          <div id="diagLog" class="diag-log">Pronto para testar conectividade/alcance HTTP e latência (RTT) ao alvo (padrão: 192.168.0.1).
+Nota: em rede local/LAN, respostas dependem de bloqueio CORS/firewall do modem ou acesso direto pela página 192.168.0.1.</div>
+        </div>
+
+        <div class="claro-default-box">
+          <div>
+            <span class="field-label" style="color:#fca5a5;">Senha Padrão Claro (Fixa)</span>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
+              Campo fixo para cópia rápida durante configuração em campo:
+            </p>
+          </div>
+          <div class="field-input-row">
+            <input id="field_claroDefaultPass" type="text" value="Claro_123456789" readonly aria-label="Senha padrão Claro fixa" />
+            <button id="btnCopyClaroPass" type="button" class="copy-btn" data-copy-input="field_claroDefaultPass">Copiar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Seção Câmera + Leitor Wi-Fi / QR / Etiqueta -->
+    <section class="card" aria-label="Câmera e leitor de dados">
+      <div class="card-header">
+        <div class="card-title">
+          📷 Câmera &amp; Leitor de Login / Senha Wi-Fi / QR Code
+        </div>
         <span id="cameraStatus" class="status-pill">Câmera desligada</span>
       </div>
 
@@ -375,8 +837,8 @@
             <div id="scanOverlay" class="scan-overlay"></div>
             <div id="cameraPlaceholder" class="camera-placeholder">
               <div style="font-size: 2rem;">📸</div>
-              <strong>Câmera pronta</strong>
-              <p>Clique em <strong>Abrir Câmera</strong> para iniciar o vídeo, ler QR Codes / códigos de barras ou capturar foto. Se preferir, use <strong>Câmera Nativa / Foto</strong>.</p>
+              <strong>Câmera pronta para uso em campo</strong>
+              <p>Clique em <strong>Abrir Câmera</strong> para ler QR Codes Wi-Fi, códigos de barras ou capturar foto da etiqueta. Se necessário, use <strong>Câmera Nativa / Foto</strong> ou cole os dados ao lado.</p>
             </div>
           </div>
 
@@ -397,48 +859,316 @@
           <canvas id="photoCanvas" style="display:none;"></canvas>
           <div id="capturedPreviewBox" style="display:none; margin-top: 12px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
-              <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">Foto capturada:</span>
+              <span class="field-label">Foto capturada da etiqueta (referência visual):</span>
               <div style="display:flex; gap:6px;">
                 <button id="btnScanCapturedImg" type="button" class="btn btn-primary btn-sm">🔍 Ler Código da Foto</button>
                 <button id="btnClearPhoto" type="button" class="btn btn-ghost btn-sm">Limpar foto</button>
               </div>
             </div>
-            <img id="capturedImage" alt="Foto capturada" style="width:100%; max-height:220px; object-fit:contain; border-radius:10px; border:1px solid var(--border-color); background:#020617;" />
+            <img id="capturedImage" alt="Foto capturada da etiqueta do EMTA" style="width:100%; max-height:220px; object-fit:contain; border-radius:10px; border:1px solid var(--border-color); background:#020617;" />
           </div>
         </div>
 
-        <div class="result-box">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <label for="rawScanInput">Leitura / Conteúdo da Câmera</label>
-            <div style="display:flex; gap:6px;">
-              <button id="btnCopyScan" type="button" class="btn btn-ghost btn-sm">📋 Copiar</button>
-              <button id="btnClearScan" type="button" class="btn btn-ghost btn-sm">Limpar</button>
-            </div>
+        <div class="parser-box">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <label for="rawScanInput">Leitura / Colagem de Etiqueta, QR Wi-Fi ou Texto</label>
+            <button id="btnParseText" type="button" class="btn btn-primary btn-sm">⚡ Extrair Dados</button>
           </div>
-          <textarea id="rawScanInput" placeholder="O código ou texto lido pela câmera aparecerá aqui..."></textarea>
+          <textarea id="rawScanInput" placeholder="Cole aqui o conteúdo lido do QR Code, etiqueta do EMTA ou texto com SSID, Password, Login, MAC, Serial... Exemplo:
+WIFI:T:WPA;S:FIBRA_CASA_2G;P:SenhaForte123;;
+Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">
+            Reconhece automaticamente padrões <code>WIFI:...</code>, <code>SSID/S:</code>, <code>Password/P/Senha:</code>, <code>Login/User/Usuário:</code>, <code>IP</code>, <code>MAC</code>, <code>Serial/S/N</code> e <code>MTA/VoIP</code>.
+          </div>
           <div id="lastScanBanner" style="font-size:0.8rem; color:#38bdf8; min-height:20px;"></div>
         </div>
       </div>
     </section>
+
+    <!-- 2. Indicador Rápido de Níveis RF (Tx / Rx / SNR DS / SNR UP) -->
+    <section class="card" aria-label="Indicador rápido de níveis RF da empresa">
+      <div class="card-header">
+        <div class="card-title">
+          📶 2. Indicador Rápido de Níveis RF — Padrão da Empresa
+        </div>
+        <button id="btnClearRf" type="button" class="btn btn-ghost btn-sm">🧹 Limpar Sinais</button>
+      </div>
+
+      <div class="rf-grid">
+        <div class="rf-card">
+          <div class="field-card-top">
+            <label for="rf_tx" class="field-label">Tx / Upstream (dBmV)</label>
+            <button type="button" class="copy-btn" data-copy-input="rf_tx">Copiar</button>
+          </div>
+          <input id="rf_tx" type="number" step="0.1" placeholder="Ex: 44.0 (38 a 51 dBmV)" />
+          <div id="rf_tx_badge" class="rf-status-badge">
+            <span>Meta: 38 a 51 dBmV</span>
+            <span>Sem leitura</span>
+          </div>
+        </div>
+
+        <div class="rf-card">
+          <div class="field-card-top">
+            <label for="rf_rx" class="field-label">Rx / Downstream (dBmV)</label>
+            <button type="button" class="copy-btn" data-copy-input="rf_rx">Copiar</button>
+          </div>
+          <input id="rf_rx" type="number" step="0.1" placeholder="Ex: 1.5 (-12 a +12 dBmV)" />
+          <div id="rf_rx_badge" class="rf-status-badge">
+            <span>Meta: -12 a +12 dBmV</span>
+            <span>Sem leitura</span>
+          </div>
+        </div>
+
+        <div class="rf-card">
+          <div class="field-card-top">
+            <label for="rf_snr_ds" class="field-label">SNR DS (dB)</label>
+            <button type="button" class="copy-btn" data-copy-input="rf_snr_ds">Copiar</button>
+          </div>
+          <input id="rf_snr_ds" type="number" step="0.1" placeholder="Ex: 37.0 (> 35 dB)" />
+          <div id="rf_snr_ds_badge" class="rf-status-badge">
+            <span>Meta: &gt; 35 dB</span>
+            <span>Sem leitura</span>
+          </div>
+        </div>
+
+        <div class="rf-card">
+          <div class="field-card-top">
+            <label for="rf_snr_up" class="field-label">SNR UP (dB)</label>
+            <button type="button" class="copy-btn" data-copy-input="rf_snr_up">Copiar</button>
+          </div>
+          <input id="rf_snr_up" type="number" step="0.1" placeholder="Ex: 31.0 (> 27 dB)" />
+          <div id="rf_snr_up_badge" class="rf-status-badge">
+            <span>Meta: &gt; 27 dB</span>
+            <span>Sem leitura</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rf-summary-bar">
+        <div id="rfOverallStatus" style="font-weight:700; color:#cbd5e1;">
+          Diagnóstico RF (Empresa): Tx 38 a 51 dBmV | Rx -12 a +12 dBmV | SNR DS &gt; 35 dB | SNR UP &gt; 27 dB.
+        </div>
+        <button id="btnCopyRfSummary" type="button" class="btn btn-ghost btn-sm">📋 Copiar Níveis RF</button>
+      </div>
+    </section>
+
+    <!-- Seção Campos Copiáveis e Configuração do EMTA -->
+    <section class="card" aria-label="Campos copiáveis e configuração do EMTA">
+      <div class="card-header">
+        <div class="card-title">
+          ⚡ Campos de Configuração do EMTA &amp; Wi-Fi (Toque para Copiar)
+        </div>
+        <button id="btnClearFields" type="button" class="btn btn-ghost btn-sm">🧹 Limpar Campos</button>
+      </div>
+
+      <div class="fields-grid">
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Página / Gateway EMTA</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_gateway" type="text" value="192.168.0.1" placeholder="192.168.0.1" />
+            <button type="button" class="copy-btn" data-copy-input="field_gateway">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Login Admin (Painel)</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_adminLogin" type="text" value="admin" placeholder="Ex: admin" />
+            <button type="button" class="copy-btn" data-copy-input="field_adminLogin">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Password Admin (Painel)</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_adminPass" type="text" placeholder="Senha de acesso ao modem/EMTA" />
+            <button type="button" class="copy-btn" data-copy-input="field_adminPass">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">SSID Wi-Fi (2.4 / Principal)</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_wifiSsid" type="text" placeholder="Nome da rede Wi-Fi" />
+            <button type="button" class="copy-btn" data-copy-input="field_wifiSsid">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Password Wi-Fi</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_wifiPass" type="text" placeholder="Senha da rede Wi-Fi" />
+            <button type="button" class="copy-btn" data-copy-input="field_wifiPass">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Segurança Wi-Fi</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_wifiSecurity" type="text" value="WPA2/WPA3-PSK" placeholder="Ex: WPA2-PSK" />
+            <button type="button" class="copy-btn" data-copy-input="field_wifiSecurity">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">SSID Wi-Fi 5GHz (Opcional)</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_wifi5gSsid" type="text" placeholder="Nome rede 5GHz" />
+            <button type="button" class="copy-btn" data-copy-input="field_wifi5gSsid">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Password Wi-Fi 5GHz</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_wifi5gPass" type="text" placeholder="Senha rede 5GHz" />
+            <button type="button" class="copy-btn" data-copy-input="field_wifi5gPass">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Modelo / Fabricante EMTA</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_emtaModel" type="text" placeholder="Ex: Technicolor / Arris / Cisco" />
+            <button type="button" class="copy-btn" data-copy-input="field_emtaModel">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">MAC Address (CM / MTA)</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_macAddress" type="text" placeholder="Ex: AA:BB:CC:DD:EE:FF" />
+            <button type="button" class="copy-btn" data-copy-input="field_macAddress">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Serial / S/N</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_serialNumber" type="text" placeholder="Número de série do equipamento" />
+            <button type="button" class="copy-btn" data-copy-input="field_serialNumber">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-card-top">
+            <span class="field-label">Linha VoIP / MTA / OS / Cliente</span>
+          </div>
+          <div class="field-input-row">
+            <input id="field_voipOrClient" type="text" placeholder="Ex: OS #12345 / Linha 1 / Cliente" />
+            <button type="button" class="copy-btn" data-copy-input="field_voipOrClient">Copiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <label for="field_notes" class="field-label" style="display:block; margin-bottom:6px;">Observações Técnicas / Níveis de Sinal / Notas EMTA</label>
+        <input id="field_notes" type="text" placeholder="Ex: Tx / Rx / SNR, bridge/router, observação de instalação..." />
+      </div>
+
+      <div class="action-bar">
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          <button id="btnCopyAllEmta" type="button" class="btn btn-primary">
+            📋 Copiar Todas as Informações do EMTA
+          </button>
+          <button id="btnSaveEmtaArchive" type="button" class="btn btn-success">
+            💾 Arquivar EMTA para Pesquisa Futura
+          </button>
+        </div>
+        <span style="font-size:0.78rem; color:var(--text-muted);">
+          Salvo localmente no navegador (LocalStorage) para consulta rápida.
+        </span>
+      </div>
+    </section>
+
+    <!-- Seção Arquivo de EMTAs para Pesquisa Futura -->
+    <section class="card" aria-label="Arquivo de EMTAs para pesquisa futura">
+      <div class="card-header">
+        <div class="card-title">
+          🗂️ Arquivo de EMTAs Salvos (<span id="archiveCount">0</span>)
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button id="btnCopyArchiveAll" type="button" class="btn btn-ghost btn-sm">📋 Copiar Arquivo Filtrado</button>
+          <button id="btnImportJsonBtn" type="button" class="btn btn-ghost btn-sm">⬆ Importar JSON</button>
+          <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none;" />
+          <button id="btnExportJson" type="button" class="btn btn-ghost btn-sm">⬇ Exportar JSON</button>
+          <button id="btnExportCsv" type="button" class="btn btn-ghost btn-sm">📊 Backup CSV</button>
+          <button id="btnClearArchive" type="button" class="btn btn-danger btn-sm">🗑 Limpar Tudo</button>
+        </div>
+      </div>
+
+      <div class="archive-toolbar">
+        <div class="search-box">
+          <input id="archiveSearch" type="text" placeholder="🔍 Pesquisar por SSID, MAC, Serial, Modelo, Login, OS..." />
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted);">
+          Clique em <strong>Copiar Tudo</strong> em qualquer registro ou <strong>Carregar nos Campos</strong>.
+        </div>
+      </div>
+
+      <div id="archiveList" class="archive-list"></div>
+    </section>
   </main>
 
-  <footer id="footerStamp"></footer>
+  <footer>
+    <span id="footerStamp">Criado por Fernando Sato - Versão 1.3 - 20.11.26 - 21:29</span>
+  </footer>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
     (function () {
       "use strict";
 
+      // Metadados automáticos de versão, data e hora no carregamento/atualização
+      const APP_VERSION = "1.3";
+      const AUTHOR_NAME = "Fernando Sato";
+
       function formatBrazilDateTime(dateObj) {
         const pad2 = (n) => String(n).padStart(2, "0");
-        return `${pad2(dateObj.getDate())}.${pad2(dateObj.getMonth() + 1)}.${String(dateObj.getFullYear()).slice(-2)} - ${pad2(dateObj.getHours())}:${pad2(dateObj.getMinutes())}`;
+        const day = pad2(dateObj.getDate());
+        const month = pad2(dateObj.getMonth() + 1);
+        const year2 = String(dateObj.getFullYear()).slice(-2);
+        const hours = pad2(dateObj.getHours());
+        const minutes = pad2(dateObj.getMinutes());
+        return `${day}.${month}.${year2} - ${hours}:${minutes}`;
       }
 
-      const footerEl = document.getElementById("footerStamp");
-      if (footerEl) {
-        footerEl.textContent = `Criado por Fernando Sato - Versão 1.3 - ${formatBrazilDateTime(new Date())}`;
+      function updateFooterStamp() {
+        const now = new Date();
+        const stamp = `Criado por ${AUTHOR_NAME} - Versão ${APP_VERSION} - ${formatBrazilDateTime(now)}`;
+        const footerEl = document.getElementById("footerStamp");
+        if (footerEl) {
+          footerEl.textContent = stamp;
+        }
+        return stamp;
       }
 
+      updateFooterStamp();
+
+      // Toast helper
       const toastEl = document.getElementById("toast");
       let toastTimer = null;
       function showToast(message) {
@@ -446,7 +1176,9 @@
         toastEl.textContent = message;
         toastEl.classList.add("show");
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+        toastTimer = setTimeout(() => {
+          toastEl.classList.remove("show");
+        }, 2800);
       }
 
       function escapeHtml(str) {
@@ -458,6 +1190,160 @@
           .replace(/'/g, "&#039;");
       }
 
+      // Clipboard helper
+      async function copyToClipboard(text, buttonEl = null, label = "Conteúdo") {
+        const value = (text ?? "").toString();
+        if (!value.trim()) {
+          showToast(`Campo "${label}" está vazio.`);
+          return false;
+        }
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+          } else {
+            const tempArea = document.createElement("textarea");
+            tempArea.value = value;
+            tempArea.style.position = "fixed";
+            tempArea.style.left = "-9999px";
+            document.body.appendChild(tempArea);
+            tempArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempArea);
+          }
+
+          if (buttonEl) {
+            const originalText = buttonEl.textContent;
+            buttonEl.classList.add("copied");
+            buttonEl.textContent = "✓ Copiado";
+            setTimeout(() => {
+              buttonEl.classList.remove("copied");
+              buttonEl.textContent = originalText;
+            }, 1400);
+          }
+          showToast(`Copiado: ${label}`);
+          return true;
+        } catch (err) {
+          showToast("Não foi possível copiar automaticamente.");
+          return false;
+        }
+      }
+
+      // Botões de copiar por input ID
+      document.querySelectorAll("[data-copy-input]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const inputId = btn.getAttribute("data-copy-input");
+          const inputEl = document.getElementById(inputId);
+          const cardLabel = btn.closest(".field-card, .rf-card, .claro-default-box")?.querySelector(".field-label")?.textContent || inputId;
+          copyToClipboard(inputEl ? inputEl.value : "", btn, cardLabel);
+        });
+      });
+
+      // Botões de copiar por elemento de texto
+      document.querySelectorAll("[data-copy-target]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.getAttribute("data-copy-target");
+          const targetEl = document.getElementById(targetId);
+          copyToClipboard(targetEl ? targetEl.textContent : "", btn, "192.168.0.1");
+        });
+      });
+
+      // 1. Diagnóstico / Ping / Reachability
+      const diagTargetIp = document.getElementById("diagTargetIp");
+      const diagLog = document.getElementById("diagLog");
+      const diagBadge = document.getElementById("diagBadge");
+      const btnPingTest = document.getElementById("btnPingTest");
+      const btnClearDiag = document.getElementById("btnClearDiag");
+
+      function appendDiagLog(line) {
+        const ts = formatBrazilDateTime(new Date()).split(" - ")[1];
+        diagLog.textContent += "\n[" + ts + "] " + line;
+        diagLog.scrollTop = diagLog.scrollHeight;
+      }
+
+      function normalizeTargetUrl(raw) {
+        const trimmed = (raw || "").trim() || "192.168.0.1";
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `http://${trimmed}`;
+      }
+
+      async function runSingleProbe(baseUrl, attemptNum) {
+        const start = performance.now();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2200);
+        const sep = baseUrl.includes("?") ? "&" : "?";
+        const probeUrl = `${baseUrl}${sep}_ping=${Date.now()}_${attemptNum}`;
+
+        try {
+          await fetch(probeUrl, {
+            method: "GET",
+            mode: "no-cors",
+            cache: "no-store",
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+          const rtt = Math.round(performance.now() - start);
+          return { ok: true, rtt };
+        } catch (err) {
+          clearTimeout(timeout);
+          const rtt = Math.round(performance.now() - start);
+          if (err && err.name === "AbortError") {
+            return { ok: false, rtt, reason: "Timeout (>2200ms)" };
+          }
+          return { ok: false, rtt, reason: err?.message || "Sem resposta / bloqueado" };
+        }
+      }
+
+      btnPingTest.addEventListener("click", async () => {
+        const url = normalizeTargetUrl(diagTargetIp.value);
+        btnPingTest.disabled = true;
+        diagBadge.textContent = "Testando...";
+        diagBadge.className = "status-pill warn";
+        appendDiagLog(`Iniciando teste de alcance (4 probes) para ${url}...`);
+
+        let successCount = 0;
+        const rtts = [];
+
+        for (let i = 1; i <= 4; i++) {
+          const res = await runSingleProbe(url, i);
+          if (res.ok) {
+            successCount++;
+            rtts.push(res.rtt);
+            appendDiagLog(`Probe #${i}: Resposta HTTP/TCP detectada em ${res.rtt} ms`);
+          } else {
+            appendDiagLog(`Probe #${i}: Falha (${res.reason}) em ${res.rtt} ms`);
+          }
+          if (i < 4) await new Promise((r) => setTimeout(r, 250));
+        }
+
+        const avgRtt = rtts.length ? Math.round(rtts.reduce((a, b) => a + b, 0) / rtts.length) : null;
+
+        if (successCount === 4) {
+          diagBadge.textContent = `Online (${avgRtt} ms)`;
+          diagBadge.className = "status-pill live";
+          appendDiagLog(`Resumo: 4/4 alcançáveis • RTT médio: ${avgRtt} ms.`);
+          showToast(`Alvo ${url} alcançável (${avgRtt} ms)`);
+        } else if (successCount > 0) {
+          diagBadge.textContent = `Instável (${successCount}/4 • ${avgRtt} ms)`;
+          diagBadge.className = "status-pill warn";
+          appendDiagLog(`Resumo: ${successCount}/4 alcançáveis • RTT médio: ${avgRtt} ms.`);
+          showToast(`Conectividade parcial (${successCount}/4)`);
+        } else {
+          diagBadge.textContent = "Sem alcance direto";
+          diagBadge.className = "status-pill bad";
+          appendDiagLog(`Resumo: 0/4 probes responderam. Verifique cabo/Wi-Fi, IP (${url}) ou abra em nova aba.`);
+          showToast("Sem resposta direta no teste de alcance.");
+        }
+
+        btnPingTest.disabled = false;
+      });
+
+      btnClearDiag.addEventListener("click", () => {
+        diagLog.textContent = "Log de diagnóstico limpo.";
+        diagBadge.textContent = "Aguardando teste";
+        diagBadge.className = "status-pill";
+      });
+
+      // Câmera e Leitor ZXing (com fallback getUserMedia + enumeração de dispositivos)
       const videoBox = document.getElementById("videoBox");
       const videoEl = document.getElementById("cameraPreview");
       const placeholderEl = document.getElementById("cameraPlaceholder");
@@ -515,7 +1401,11 @@
           btnTorchCam.textContent = "🔦 Luz";
         }
 
-        cameraStatusEl.textContent = statusText || (active ? "Câmera ativa" : "Câmera desligada");
+        if (statusText) {
+          cameraStatusEl.textContent = statusText;
+        } else {
+          cameraStatusEl.textContent = active ? "Câmera ativa (lendo códigos)" : "Câmera desligada";
+        }
         cameraStatusEl.className = active ? "status-pill live" : "status-pill";
       }
 
@@ -568,7 +1458,9 @@
           },
           {
             audio: false,
-            video: { facingMode: facingMode }
+            video: {
+              facingMode: facingMode
+            }
           },
           {
             audio: false,
@@ -647,7 +1539,7 @@
             await videoEl.play();
           } catch (_) {}
 
-          setCameraUI(true, "Câmera ativa");
+          setCameraUI(true, "Câmera ativa • Aponte para QR / Código");
           const label = currentTrack?.label || "Câmera do dispositivo";
           setCameraDiag(`Ativa: ${label} (${videoEl.videoWidth || "?"}x${videoEl.videoHeight || "?"}). Toque na imagem para focar.`);
           showToast("Câmera aberta.");
@@ -657,20 +1549,30 @@
           if (codeReader) {
             try {
               const targetDeviceId = forcedDeviceId || currentTrack?.getSettings?.()?.deviceId || null;
-              const onDecode = (result) => {
-                if (result && result.getText) {
-                  const decoded = result.getText().trim();
-                  if (decoded && rawScanInput.value.trim() !== decoded) {
-                    rawScanInput.value = decoded;
-                    lastScanBanner.textContent = `Código lido às ${formatBrazilDateTime(new Date()).split(" - ")[1]}: ${decoded.slice(0, 100)}`;
-                    showToast("Código lido pela câmera!");
-                  }
-                }
-              };
               if (targetDeviceId && typeof codeReader.decodeFromVideoDevice === "function") {
-                codeReader.decodeFromVideoDevice(targetDeviceId, videoEl, onDecode).catch(() => {});
+                codeReader.decodeFromVideoDevice(targetDeviceId, videoEl, (result) => {
+                  if (result && result.getText) {
+                    const decoded = result.getText().trim();
+                    if (decoded && rawScanInput.value.trim() !== decoded) {
+                      rawScanInput.value = decoded;
+                      lastScanBanner.textContent = `Código lido às ${formatBrazilDateTime(new Date()).split(" - ")[1]}: ${decoded.slice(0, 90)}`;
+                      parseRawInput(decoded, true);
+                      showToast("Código lido pela câmera e campos preenchidos!");
+                    }
+                  }
+                }).catch(() => {});
               } else if (typeof codeReader.decodeFromStream === "function") {
-                codeReader.decodeFromStream(stream, videoEl, onDecode);
+                codeReader.decodeFromStream(stream, videoEl, (result) => {
+                  if (result && result.getText) {
+                    const decoded = result.getText().trim();
+                    if (decoded && rawScanInput.value.trim() !== decoded) {
+                      rawScanInput.value = decoded;
+                      lastScanBanner.textContent = `Código lido às ${formatBrazilDateTime(new Date()).split(" - ")[1]}: ${decoded.slice(0, 90)}`;
+                      parseRawInput(decoded, true);
+                      showToast("Código lido pela câmera e campos preenchidos!");
+                    }
+                  }
+                });
               }
             } catch (_) {}
           }
@@ -716,7 +1618,14 @@
         }
       }
 
-      btnToggleCamera.addEventListener("click", () => (isCameraActive ? stopCamera() : startCamera()));
+      btnToggleCamera.addEventListener("click", () => {
+        if (isCameraActive) {
+          stopCamera();
+        } else {
+          startCamera();
+        }
+      });
+
       btnStartCam.addEventListener("click", () => startCamera());
       btnStopCam.addEventListener("click", () => stopCamera());
 
@@ -724,8 +1633,9 @@
         await listVideoInputs();
         if (videoDevices.length > 1) {
           currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+          const nextDev = videoDevices[currentDeviceIndex];
           facingMode = facingMode === "environment" ? "user" : "environment";
-          startCamera(videoDevices[currentDeviceIndex].deviceId);
+          startCamera(nextDev.deviceId);
         } else {
           facingMode = facingMode === "environment" ? "user" : "environment";
           startCamera();
@@ -760,7 +1670,7 @@
           const mode = caps.focusMode.includes("single-shot") ? "single-shot" : (caps.focusMode.includes("continuous") ? "continuous" : null);
           if (mode) {
             currentTrack.applyConstraints({ advanced: [{ focusMode: mode }] }).then(() => {
-              showToast("Foco ajustado.");
+              showToast("Foco ajustado na etiqueta.");
             }).catch(() => {});
           }
         }
@@ -775,9 +1685,10 @@
         photoCanvas.height = videoEl.videoHeight;
         const ctx = photoCanvas.getContext("2d");
         ctx.drawImage(videoEl, 0, 0, photoCanvas.width, photoCanvas.height);
-        capturedImage.src = photoCanvas.toDataURL("image/jpeg", 0.85);
+        const dataUrl = photoCanvas.toDataURL("image/jpeg", 0.85);
+        capturedImage.src = dataUrl;
         capturedPreviewBox.style.display = "block";
-        showToast("Foto capturada.");
+        showToast("Foto da etiqueta capturada.");
       });
 
       btnNativePhotoPick.addEventListener("click", () => {
@@ -792,7 +1703,7 @@
         reader.onload = (ev) => {
           capturedImage.src = String(ev.target.result || "");
           capturedPreviewBox.style.display = "block";
-          setCameraDiag(`Imagem carregada (${file.name}). Clique em "Ler Código da Foto" se desejar decodificar.`);
+          setCameraDiag(`Imagem carregada (${file.name}). Clique em "Ler Código da Foto" ou confira visualmente.`);
           showToast("Foto carregada.");
         };
         reader.readAsDataURL(file);
@@ -800,11 +1711,11 @@
 
       btnScanCapturedImg.addEventListener("click", async () => {
         if (!capturedImage.src) {
-          showToast("Nenhuma foto carregada.");
+          showToast("Nenhuma foto carregada para ler.");
           return;
         }
         if (!codeReader || typeof codeReader.decodeFromImageUrl !== "function") {
-          showToast("Leitor de imagem indisponível.");
+          showToast("Leitor de imagem indisponível; confira a foto na tela.");
           return;
         }
         try {
@@ -812,13 +1723,14 @@
           const decoded = (result?.getText() || "").trim();
           if (decoded) {
             rawScanInput.value = decoded;
-            lastScanBanner.textContent = `Código lido da foto: ${decoded.slice(0, 100)}`;
-            showToast("Código extraído da foto!");
+            lastScanBanner.textContent = `Código lido da foto: ${decoded.slice(0, 90)}`;
+            parseRawInput(decoded, true);
+            showToast("Código extraído da foto com sucesso!");
           } else {
-            showToast("Nenhum código legível encontrado na foto.");
+            showToast("Nenhum QR/código de barras legível encontrado na foto.");
           }
-        } catch (_) {
-          showToast("Não foi possível decodificar código na foto.");
+        } catch (err) {
+          showToast("Não foi possível decodificar código na foto; digite ou cole os dados.");
         }
       });
 
@@ -827,24 +1739,640 @@
         capturedPreviewBox.style.display = "none";
       });
 
-      document.getElementById("btnCopyScan").addEventListener("click", async () => {
-        const val = rawScanInput.value.trim();
-        if (!val) {
-          showToast("Nada para copiar.");
+      // Parser inteligente de QR Wi-Fi / Etiqueta / Texto técnico
+      function unescapeWifiField(str) {
+        return (str || "").replace(/\\([\\;,:"'])/g, "$1").trim();
+      }
+
+      function parseRawInput(rawText, fromScanner = false) {
+        const text = (rawText || "").trim();
+        if (!text) {
+          if (!fromScanner) showToast("Cole ou digite algum texto para extrair.");
           return;
         }
+
+        let updatedCount = 0;
+        const setIfFound = (inputId, val) => {
+          if (!val) return;
+          const el = document.getElementById(inputId);
+          if (el) {
+            el.value = val.trim();
+            updatedCount++;
+          }
+        };
+
+        if (/^WIFI:/i.test(text)) {
+          const body = text.replace(/^WIFI:/i, "");
+          const typeMatch = body.match(/(?:^|;)T:([^;]*)/i);
+          const ssidMatch = body.match(/(?:^|;)S:((?:\\;|[^;])*)/i);
+          const passMatch = body.match(/(?:^|;)P:((?:\\;|[^;])*)/i);
+
+          if (ssidMatch) setIfFound("field_wifiSsid", unescapeWifiField(ssidMatch[1]));
+          if (passMatch) setIfFound("field_wifiPass", unescapeWifiField(passMatch[1]));
+          if (typeMatch && typeMatch[1]) {
+            const t = typeMatch[1].trim().toUpperCase();
+            setIfFound("field_wifiSecurity", t === "NOPASS" ? "Aberta (NOPASS)" : `${t}-PSK`);
+          }
+        }
+
+        const ssidMatch = text.match(/(?:SSID|Wi-?Fi\s*(?:Name|Nome)?|Rede)\s*[:=]\s*([^\r\n|;,]+)/i);
+        if (ssidMatch) setIfFound("field_wifiSsid", ssidMatch[1]);
+
+        const wifiPassMatch = text.match(/(?:Wi-?Fi\s*(?:Pass(?:word)?|Senha|Key|PSK)|WPA(?:-?PSK)?|Password|Senha|Key)\s*[:=]\s*([^\r\n|;,]+)/i);
+        if (wifiPassMatch) setIfFound("field_wifiPass", wifiPassMatch[1]);
+
+        const loginMatch = text.match(/(?:Admin\s*)?(?:Login|User(?:name)?|Usuário|Usuario)\s*[:=]\s*([^\r\n|;,]+)/i);
+        if (loginMatch) setIfFound("field_adminLogin", loginMatch[1]);
+
+        const adminPassMatch = text.match(/(?:Admin\s*(?:Pass(?:word)?|Senha)|Panel\s*Pass)\s*[:=]\s*([^\r\n|;,]+)/i);
+        if (adminPassMatch) setIfFound("field_adminPass", adminPassMatch[1]);
+
+        const ipMatch = text.match(/\b((?:192\.168|10|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2})\b/);
+        if (ipMatch) setIfFound("field_gateway", ipMatch[1]);
+
+        const macMatch = text.match(/\b([0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5})\b/);
+        if (macMatch) setIfFound("field_macAddress", macMatch[1].toUpperCase());
+
+        const serialMatch = text.match(/(?:S\/N|Serial(?:\s*(?:No|Number|Num))?|SN)\s*[:=#-]?\s*([A-Za-z0-9_-]{5,})/i);
+        if (serialMatch) setIfFound("field_serialNumber", serialMatch[1]);
+
+        const modelMatch = text.match(/(?:Model(?:o)?|EMTA|Fabricante|Vendor)\s*[:=]\s*([^\r\n|;,]+)/i);
+        if (modelMatch) setIfFound("field_emtaModel", modelMatch[1]);
+
+        if (!fromScanner) {
+          if (updatedCount > 0) {
+            showToast(`Extraído e preenchido (${updatedCount} campo(s)).`);
+          } else {
+            const notesEl = document.getElementById("field_notes");
+            if (notesEl) {
+              notesEl.value = notesEl.value ? `${notesEl.value} | ${text}` : text;
+              showToast("Texto adicionado às observações do EMTA.");
+            }
+          }
+        }
+      }
+
+      document.getElementById("btnParseText").addEventListener("click", () => {
+        parseRawInput(rawScanInput.value, false);
+      });
+
+      // 2. Indicador Rápido de Níveis RF — Padrão da Empresa:
+      // Tx: 38 dBmV à 51 dBmV
+      // Rx: -12 dBmV à 12 dBmV
+      // SNR DS: > 35 dB
+      // SNR UP: > 27 dB
+      const rfTxInput = document.getElementById("rf_tx");
+      const rfRxInput = document.getElementById("rf_rx");
+      const rfSnrDsInput = document.getElementById("rf_snr_ds");
+      const rfSnrUpInput = document.getElementById("rf_snr_up");
+
+      const rfTxBadge = document.getElementById("rf_tx_badge");
+      const rfRxBadge = document.getElementById("rf_rx_badge");
+      const rfSnrDsBadge = document.getElementById("rf_snr_ds_badge");
+      const rfSnrUpBadge = document.getElementById("rf_snr_up_badge");
+      const rfOverallStatus = document.getElementById("rfOverallStatus");
+
+      function evaluateRfLevels() {
+        const txRaw = rfTxInput.value.trim();
+        const rxRaw = rfRxInput.value.trim();
+        const snrDsRaw = rfSnrDsInput.value.trim();
+        const snrUpRaw = rfSnrUpInput.value.trim();
+
+        const statuses = [];
+
+        if (txRaw === "") {
+          rfTxBadge.className = "rf-status-badge";
+          rfTxBadge.innerHTML = `<span>Meta: 38 a 51 dBmV</span><span>Sem leitura</span>`;
+        } else {
+          const val = parseFloat(txRaw);
+          if (Number.isNaN(val)) {
+            rfTxBadge.className = "rf-status-badge warn";
+            rfTxBadge.innerHTML = `<span>Tx</span><span>Valor inválido</span>`;
+          } else if (val >= 38 && val <= 51) {
+            rfTxBadge.className = "rf-status-badge ok";
+            rfTxBadge.innerHTML = `<span>${val.toFixed(1)} dBmV</span><span>OK (38-51)</span>`;
+            statuses.push("ok");
+          } else {
+            rfTxBadge.className = "rf-status-badge bad";
+            rfTxBadge.innerHTML = `<span>${val.toFixed(1)} dBmV</span><span>FORA (38-51)</span>`;
+            statuses.push("bad");
+          }
+        }
+
+        if (rxRaw === "") {
+          rfRxBadge.className = "rf-status-badge";
+          rfRxBadge.innerHTML = `<span>Meta: -12 a +12 dBmV</span><span>Sem leitura</span>`;
+        } else {
+          const val = parseFloat(rxRaw);
+          if (Number.isNaN(val)) {
+            rfRxBadge.className = "rf-status-badge warn";
+            rfRxBadge.innerHTML = `<span>Rx</span><span>Valor inválido</span>`;
+          } else if (val >= -12 && val <= 12) {
+            rfRxBadge.className = "rf-status-badge ok";
+            rfRxBadge.innerHTML = `<span>${val.toFixed(1)} dBmV</span><span>OK (-12 a +12)</span>`;
+            statuses.push("ok");
+          } else {
+            rfRxBadge.className = "rf-status-badge bad";
+            rfRxBadge.innerHTML = `<span>${val.toFixed(1)} dBmV</span><span>FORA (-12 a +12)</span>`;
+            statuses.push("bad");
+          }
+        }
+
+        if (snrDsRaw === "") {
+          rfSnrDsBadge.className = "rf-status-badge";
+          rfSnrDsBadge.innerHTML = `<span>Meta: &gt; 35 dB</span><span>Sem leitura</span>`;
+        } else {
+          const val = parseFloat(snrDsRaw);
+          if (Number.isNaN(val)) {
+            rfSnrDsBadge.className = "rf-status-badge warn";
+            rfSnrDsBadge.innerHTML = `<span>SNR DS</span><span>Valor inválido</span>`;
+          } else if (val > 35) {
+            rfSnrDsBadge.className = "rf-status-badge ok";
+            rfSnrDsBadge.innerHTML = `<span>${val.toFixed(1)} dB</span><span>OK (&gt; 35)</span>`;
+            statuses.push("ok");
+          } else {
+            rfSnrDsBadge.className = "rf-status-badge bad";
+            rfSnrDsBadge.innerHTML = `<span>${val.toFixed(1)} dB</span><span>BAIXO (&lt;= 35)</span>`;
+            statuses.push("bad");
+          }
+        }
+
+        if (snrUpRaw === "") {
+          rfSnrUpBadge.className = "rf-status-badge";
+          rfSnrUpBadge.innerHTML = `<span>Meta: &gt; 27 dB</span><span>Sem leitura</span>`;
+        } else {
+          const val = parseFloat(snrUpRaw);
+          if (Number.isNaN(val)) {
+            rfSnrUpBadge.className = "rf-status-badge warn";
+            rfSnrUpBadge.innerHTML = `<span>SNR UP</span><span>Valor inválido</span>`;
+          } else if (val > 27) {
+            rfSnrUpBadge.className = "rf-status-badge ok";
+            rfSnrUpBadge.innerHTML = `<span>${val.toFixed(1)} dB</span><span>OK (&gt; 27)</span>`;
+            statuses.push("ok");
+          } else {
+            rfSnrUpBadge.className = "rf-status-badge bad";
+            rfSnrUpBadge.innerHTML = `<span>${val.toFixed(1)} dB</span><span>BAIXO (&lt;= 27)</span>`;
+            statuses.push("bad");
+          }
+        }
+
+        if (!statuses.length) {
+          rfOverallStatus.textContent = "Diagnóstico RF (Empresa): Tx 38 a 51 dBmV | Rx -12 a +12 dBmV | SNR DS > 35 dB | SNR UP > 27 dB.";
+          rfOverallStatus.style.color = "#cbd5e1";
+        } else if (statuses.includes("bad")) {
+          rfOverallStatus.textContent = "Diagnóstico RF: FORA DO PADRÃO DA EMPRESA — Verifique níveis Tx/Rx e SNR DS/UP.";
+          rfOverallStatus.style.color = "#f87171";
+        } else {
+          rfOverallStatus.textContent = "Diagnóstico RF: DENTRO DO PADRÃO DA EMPRESA.";
+          rfOverallStatus.style.color = "#34d399";
+        }
+      }
+
+      [rfTxInput, rfRxInput, rfSnrDsInput, rfSnrUpInput].forEach((el) => {
+        el.addEventListener("input", evaluateRfLevels);
+      });
+
+      document.getElementById("btnClearRf").addEventListener("click", () => {
+        rfTxInput.value = "";
+        rfRxInput.value = "";
+        rfSnrDsInput.value = "";
+        rfSnrUpInput.value = "";
+        evaluateRfLevels();
+        showToast("Campos de níveis RF limpos.");
+      });
+
+      function getRfSummaryText() {
+        const parts = [];
+        if (rfTxInput.value.trim() !== "") parts.push(`Tx: ${rfTxInput.value.trim()} dBmV`);
+        if (rfRxInput.value.trim() !== "") parts.push(`Rx: ${rfRxInput.value.trim()} dBmV`);
+        if (rfSnrDsInput.value.trim() !== "") parts.push(`SNR DS: ${rfSnrDsInput.value.trim()} dB`);
+        if (rfSnrUpInput.value.trim() !== "") parts.push(`SNR UP: ${rfSnrUpInput.value.trim()} dB`);
+        return parts.join(" | ");
+      }
+
+      document.getElementById("btnCopyRfSummary").addEventListener("click", function () {
+        const txt = getRfSummaryText();
+        copyToClipboard(txt, this, "Níveis RF");
+      });
+
+      // Coleta de todos os campos EMTA
+      const FIELD_IDS = [
+        "field_gateway",
+        "field_adminLogin",
+        "field_adminPass",
+        "field_wifiSsid",
+        "field_wifiPass",
+        "field_wifiSecurity",
+        "field_wifi5gSsid",
+        "field_wifi5gPass",
+        "field_emtaModel",
+        "field_macAddress",
+        "field_serialNumber",
+        "field_voipOrClient",
+        "field_notes"
+      ];
+
+      function collectEmtaData() {
+        const getVal = (id) => (document.getElementById(id)?.value || "").trim();
+        const rfText = getRfSummaryText();
+        const baseNotes = getVal("field_notes");
+        const combinedNotes = [rfText, baseNotes].filter(Boolean).join(" | ");
+
+        return {
+          gateway: getVal("field_gateway") || "192.168.0.1",
+          adminLogin: getVal("field_adminLogin"),
+          adminPass: getVal("field_adminPass"),
+          wifiSsid: getVal("field_wifiSsid"),
+          wifiPass: getVal("field_wifiPass"),
+          wifiSecurity: getVal("field_wifiSecurity"),
+          wifi5gSsid: getVal("field_wifi5gSsid"),
+          wifi5gPass: getVal("field_wifi5gPass"),
+          emtaModel: getVal("field_emtaModel"),
+          macAddress: getVal("field_macAddress"),
+          serialNumber: getVal("field_serialNumber"),
+          voipOrClient: getVal("field_voipOrClient"),
+          rfTx: rfTxInput.value.trim(),
+          rfRx: rfRxInput.value.trim(),
+          rfSnrDs: rfSnrDsInput.value.trim(),
+          rfSnrUp: rfSnrUpInput.value.trim(),
+          notes: combinedNotes
+        };
+      }
+
+      function populateEmtaData(data) {
+        const map = {
+          field_gateway: data.gateway || "192.168.0.1",
+          field_adminLogin: data.adminLogin || "",
+          field_adminPass: data.adminPass || "",
+          field_wifiSsid: data.wifiSsid || "",
+          field_wifiPass: data.wifiPass || "",
+          field_wifiSecurity: data.wifiSecurity || "",
+          field_wifi5gSsid: data.wifi5gSsid || "",
+          field_wifi5gPass: data.wifi5gPass || "",
+          field_emtaModel: data.emtaModel || "",
+          field_macAddress: data.macAddress || "",
+          field_serialNumber: data.serialNumber || "",
+          field_voipOrClient: data.voipOrClient || "",
+          field_notes: data.notes || ""
+        };
+        Object.entries(map).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val;
+        });
+
+        rfTxInput.value = data.rfTx || data.rfUpstream || "";
+        rfRxInput.value = data.rfRx || data.rfDownstream || "";
+        rfSnrDsInput.value = data.rfSnrDs || data.rfSnr || "";
+        rfSnrUpInput.value = data.rfSnrUp || "";
+        evaluateRfLevels();
+      }
+
+      function formatEmtaSummary(data, savedAt = null) {
+        const rfParts = [];
+        if (data.rfTx || data.rfUpstream) rfParts.push(`Tx: ${data.rfTx || data.rfUpstream} dBmV`);
+        if (data.rfRx || data.rfDownstream) rfParts.push(`Rx: ${data.rfRx || data.rfDownstream} dBmV`);
+        if (data.rfSnrDs || data.rfSnr) rfParts.push(`SNR DS: ${data.rfSnrDs || data.rfSnr} dB`);
+        if (data.rfSnrUp) rfParts.push(`SNR UP: ${data.rfSnrUp} dB`);
+
+        const lines = [
+          "=== DADOS EMTA / WI-FI ===",
+          savedAt ? `Registrado em: ${savedAt}` : null,
+          data.voipOrClient ? `OS / Linha / Cliente: ${data.voipOrClient}` : null,
+          `Página / IP: http://${data.gateway.replace(/^https?:\/\//i, "")}`,
+          data.adminLogin ? `Login Admin: ${data.adminLogin}` : null,
+          data.adminPass ? `Password Admin: ${data.adminPass}` : null,
+          data.wifiSsid ? `SSID Wi-Fi: ${data.wifiSsid}` : null,
+          data.wifiPass ? `Password Wi-Fi: ${data.wifiPass}` : null,
+          data.wifiSecurity ? `Segurança Wi-Fi: ${data.wifiSecurity}` : null,
+          data.wifi5gSsid ? `SSID Wi-Fi 5GHz: ${data.wifi5gSsid}` : null,
+          data.wifi5gPass ? `Password Wi-Fi 5GHz: ${data.wifi5gPass}` : null,
+          data.emtaModel ? `Modelo EMTA: ${data.emtaModel}` : null,
+          data.macAddress ? `MAC Address: ${data.macAddress}` : null,
+          data.serialNumber ? `Serial / S/N: ${data.serialNumber}` : null,
+          rfParts.length ? `Níveis RF: ${rfParts.join(" | ")}` : null,
+          data.notes ? `Observações: ${data.notes}` : null
+        ].filter(Boolean);
+        return lines.join("\n");
+      }
+
+      document.getElementById("btnCopyAllEmta").addEventListener("click", function () {
+        const summary = formatEmtaSummary(collectEmtaData());
+        copyToClipboard(summary, this, "Todas as informações do EMTA");
+      });
+
+      document.getElementById("btnClearFields").addEventListener("click", () => {
+        FIELD_IDS.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (id === "field_gateway") el.value = "192.168.0.1";
+          else if (id === "field_adminLogin") el.value = "admin";
+          else if (id === "field_wifiSecurity") el.value = "WPA2/WPA3-PSK";
+          else el.value = "";
+        });
+        rfTxInput.value = "";
+        rfRxInput.value = "";
+        rfSnrDsInput.value = "";
+        rfSnrUpInput.value = "";
+        evaluateRfLevels();
+        showToast("Campos resetados para padrão.");
+      });
+
+      // Arquivo LocalStorage para pesquisa futura
+      const STORAGE_KEY = "emta_field_archive_v1";
+      const archiveListEl = document.getElementById("archiveList");
+      const archiveCountEl = document.getElementById("archiveCount");
+      const archiveSearchEl = document.getElementById("archiveSearch");
+      const importJsonInput = document.getElementById("importJsonInput");
+
+      function loadArchive() {
         try {
-          await navigator.clipboard.writeText(val);
-          showToast("Conteúdo copiado.");
-        } catch (_) {
-          showToast("Não foi possível copiar.");
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          return [];
+        }
+      }
+
+      function saveArchive(items) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        } catch (err) {
+          showToast("Erro ao salvar no armazenamento local.");
+        }
+      }
+
+      function getFilteredArchive() {
+        const query = (archiveSearchEl.value || "").trim().toLowerCase();
+        const items = loadArchive();
+        if (!query) return items;
+        return items.filter((item) => {
+          const haystack = [
+            item.savedAt,
+            item.voipOrClient,
+            item.gateway,
+            item.adminLogin,
+            item.adminPass,
+            item.wifiSsid,
+            item.wifiPass,
+            item.wifi5gSsid,
+            item.emtaModel,
+            item.macAddress,
+            item.serialNumber,
+            item.rfTx,
+            item.rfRx,
+            item.rfSnrDs,
+            item.rfSnrUp,
+            item.notes
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
+        });
+      }
+
+      function renderArchive() {
+        const allItems = loadArchive();
+        const filtered = getFilteredArchive();
+        archiveCountEl.textContent = String(allItems.length);
+
+        if (!filtered.length) {
+          archiveListEl.innerHTML = allItems.length
+            ? `<div class="empty-state">Nenhum registro encontrado para "${escapeHtml(archiveSearchEl.value)}".</div>`
+            : `<div class="empty-state">Nenhum EMTA arquivado ainda. Preencha os campos acima e clique em <strong>Arquivar EMTA para Pesquisa Futura</strong>.</div>`;
+          return;
+        }
+
+        archiveListEl.innerHTML = filtered
+          .map((item) => {
+            const title =
+              item.voipOrClient ||
+              item.wifiSsid ||
+              item.macAddress ||
+              item.serialNumber ||
+              item.emtaModel ||
+              "Registro EMTA";
+
+            const txVal = item.rfTx || item.rfUpstream || "";
+            const rxVal = item.rfRx || item.rfDownstream || "";
+            const snrDsVal = item.rfSnrDs || item.rfSnr || "";
+            const snrUpVal = item.rfSnrUp || "";
+
+            const badges = [
+              item.gateway ? `IP: ${item.gateway}` : null,
+              item.adminLogin ? `Login: ${item.adminLogin}` : null,
+              item.adminPass ? `Pass Admin: ${item.adminPass}` : null,
+              item.wifiSsid ? `SSID: ${item.wifiSsid}` : null,
+              item.wifiPass ? `Senha Wi-Fi: ${item.wifiPass}` : null,
+              item.macAddress ? `MAC: ${item.macAddress}` : null,
+              item.serialNumber ? `S/N: ${item.serialNumber}` : null,
+              item.emtaModel ? `Modelo: ${item.emtaModel}` : null,
+              txVal ? `Tx: ${txVal}dBmV` : null,
+              rxVal ? `Rx: ${rxVal}dBmV` : null,
+              snrDsVal ? `SNR DS: ${snrDsVal}dB` : null,
+              snrUpVal ? `SNR UP: ${snrUpVal}dB` : null
+            ].filter(Boolean);
+
+            return `
+              <article class="archive-item" data-id="${escapeHtml(item.id)}">
+                <div class="archive-item-header">
+                  <div class="archive-title">${escapeHtml(title)}</div>
+                  <div class="archive-meta">${escapeHtml(item.savedAt || "")}</div>
+                </div>
+                <div class="archive-tags">
+                  ${badges.map((b) => `<span class="tag">${escapeHtml(b)}</span>`).join("")}
+                </div>
+                ${item.notes ? `<div style="font-size:0.82rem; color:var(--text-muted);">Obs: ${escapeHtml(item.notes)}</div>` : ""}
+                <div class="archive-actions">
+                  <button type="button" class="btn btn-primary btn-sm" data-action="copy" data-id="${escapeHtml(item.id)}">📋 Copiar Tudo</button>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="load" data-id="${escapeHtml(item.id)}">↩ Carregar nos Campos</button>
+                  <button type="button" class="btn btn-danger btn-sm" data-action="delete" data-id="${escapeHtml(item.id)}">✕ Excluir</button>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+      }
+
+      document.getElementById("btnSaveEmtaArchive").addEventListener("click", () => {
+        const data = collectEmtaData();
+        const hasAnyMeaningful =
+          data.wifiSsid || data.wifiPass || data.adminPass || data.macAddress || data.serialNumber || data.emtaModel || data.voipOrClient || data.notes || data.rfTx || data.rfRx || data.rfSnrDs || data.rfSnrUp;
+        if (!hasAnyMeaningful) {
+          showToast("Preencha ao menos SSID, senha, MAC, Serial, Sinais RF ou OS antes de arquivar.");
+          return;
+        }
+
+        const items = loadArchive();
+        const entry = {
+          id: "emta_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          savedAt: formatBrazilDateTime(new Date()),
+          ...data
+        };
+        items.unshift(entry);
+        saveArchive(items);
+        renderArchive();
+        showToast("EMTA arquivado para pesquisa futura!");
+      });
+
+      archiveListEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+        const action = btn.getAttribute("data-action");
+        const id = btn.getAttribute("data-id");
+        const items = loadArchive();
+        const item = items.find((x) => x.id === id);
+
+        if (action === "copy" && item) {
+          copyToClipboard(formatEmtaSummary(item, item.savedAt), btn, "Registro EMTA");
+        } else if (action === "load" && item) {
+          populateEmtaData(item);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          showToast("Dados carregados nos campos.");
+        } else if (action === "delete") {
+          const remaining = items.filter((x) => x.id !== id);
+          saveArchive(remaining);
+          renderArchive();
+          showToast("Registro removido do arquivo.");
         }
       });
 
-      document.getElementById("btnClearScan").addEventListener("click", () => {
-        rawScanInput.value = "";
-        lastScanBanner.textContent = "";
+      archiveSearchEl.addEventListener("input", renderArchive);
+
+      document.getElementById("btnCopyArchiveAll").addEventListener("click", function () {
+        const filtered = getFilteredArchive();
+        if (!filtered.length) {
+          showToast("Nenhum registro no arquivo para copiar.");
+          return;
+        }
+        const fullText = filtered.map((item) => formatEmtaSummary(item, item.savedAt)).join("\n\n----------------------------------------\n\n");
+        copyToClipboard(fullText, this, `${filtered.length} registro(s) arquivado(s)`);
       });
+
+      // Importar JSON
+      document.getElementById("btnImportJsonBtn").addEventListener("click", () => {
+        importJsonInput.value = "";
+        importJsonInput.click();
+      });
+
+      importJsonInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(String(ev.target.result || "[]"));
+            const incoming = Array.isArray(parsed) ? parsed : [parsed];
+            const validItems = incoming.filter((x) => x && typeof x === "object").map((x) => ({
+              id: x.id || ("emta_imp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+              savedAt: x.savedAt || formatBrazilDateTime(new Date()),
+              gateway: x.gateway || "192.168.0.1",
+              adminLogin: x.adminLogin || "",
+              adminPass: x.adminPass || "",
+              wifiSsid: x.wifiSsid || "",
+              wifiPass: x.wifiPass || "",
+              wifiSecurity: x.wifiSecurity || "",
+              wifi5gSsid: x.wifi5gSsid || "",
+              wifi5gPass: x.wifi5gPass || "",
+              emtaModel: x.emtaModel || "",
+              macAddress: x.macAddress || "",
+              serialNumber: x.serialNumber || "",
+              voipOrClient: x.voipOrClient || "",
+              rfTx: x.rfTx || x.rfUpstream || "",
+              rfRx: x.rfRx || x.rfDownstream || "",
+              rfSnrDs: x.rfSnrDs || x.rfSnr || "",
+              rfSnrUp: x.rfSnrUp || "",
+              notes: x.notes || ""
+            }));
+
+            if (!validItems.length) {
+              showToast("JSON sem registros válidos.");
+              return;
+            }
+
+            const existing = loadArchive();
+            const existingIds = new Set(existing.map((i) => i.id));
+            const merged = [...validItems.filter((i) => !existingIds.has(i.id)), ...existing];
+            saveArchive(merged);
+            renderArchive();
+            showToast(`Importado(s) ${validItems.length} registro(s) JSON.`);
+          } catch (err) {
+            showToast("Arquivo JSON inválido.");
+          }
+        };
+        reader.readAsText(file, "utf-8");
+      });
+
+      // Exportar JSON
+      document.getElementById("btnExportJson").addEventListener("click", () => {
+        const items = loadArchive();
+        if (!items.length) {
+          showToast("Arquivo vazio para exportar.");
+          return;
+        }
+        const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = formatBrazilDateTime(new Date()).replace(/[^\d]/g, "");
+        a.href = url;
+        a.download = `arquivo-emta-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Arquivo JSON exportado.");
+      });
+
+      // Backup CSV
+      function csvEscape(val) {
+        const s = (val ?? "").toString().replace(/"/g, '""');
+        return `"${s}"`;
+      }
+
+      document.getElementById("btnExportCsv").addEventListener("click", () => {
+        const items = loadArchive();
+        if (!items.length) {
+          showToast("Arquivo vazio para backup CSV.");
+          return;
+        }
+        const headers = [
+          "id", "savedAt", "voipOrClient", "gateway", "adminLogin", "adminPass",
+          "wifiSsid", "wifiPass", "wifiSecurity", "wifi5gSsid", "wifi5gPass",
+          "emtaModel", "macAddress", "serialNumber", "rfTx", "rfRx", "rfSnrDs", "rfSnrUp", "notes"
+        ];
+        const csvLines = [
+          headers.map(csvEscape).join(";"),
+          ...items.map((item) => headers.map((h) => csvEscape(item[h])).join(";"))
+        ];
+        const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = formatBrazilDateTime(new Date()).replace(/[^\d]/g, "");
+        a.href = url;
+        a.download = `backup-emta-${stamp}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Backup CSV gerado e baixado.");
+      });
+
+      document.getElementById("btnClearArchive").addEventListener("click", () => {
+        const items = loadArchive();
+        if (!items.length) {
+          showToast("O arquivo já está vazio.");
+          return;
+        }
+        if (confirm("Deseja realmente apagar todos os EMTAs arquivados?")) {
+          saveArchive([]);
+          renderArchive();
+          showToast("Todo o arquivo EMTA foi apagado.");
+        }
+      });
+
+      evaluateRfLevels();
+      renderArchive();
     })();
   </script>
 </body>
