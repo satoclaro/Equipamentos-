@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "2.7";
+      const APP_VERSION = "2.8";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2014,67 +2014,46 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
 
         const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-        // 9. Usuário / Login do 192.168.0.1 (sempre vem depois de "usuário", na mesma linha ou na próxima linha)
+        // 9. Usuário do EMTA: sempre começa com Claro_ ou NET_ (não 2G/5G) após "Usuário:"
         let capturedUser = "";
-        const userLineIdx = lines.findIndex((l) => /(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)\b/i.test(l));
-        if (userLineIdx !== -1) {
-          const userLine = lines[userLineIdx];
-          const nextLineAfterUser = lines[userLineIdx + 1] || "";
-          const afterColon = userLine.includes(":") ? userLine.split(":").slice(1).join(":").trim() : "";
+        const formatEmtaUser = (rawVal) => {
+          if (!rawVal) return "";
+          const cleaned = String(rawVal).trim().replace(/^[—–\-:\s]+/, "");
+          const m = cleaned.match(/\b((?:CLARO|NET)[_\s-](?!2G|5G)[A-Za-z0-9_-]{3,})\b/i);
+          if (!m) return "";
+          return m[1].trim().replace(/^(CLARO|NET)[_\s-]+/i, (_, p) => (/^claro$/i.test(p) ? "Claro_" : "NET_"));
+        };
 
-          const normalizeClaroNetUser = (rawVal) => {
-            const cleaned = (rawVal || "").trim().replace(/^[—–\-:\s]+/, "");
-            const claroNetSpaced = cleaned.match(/^((?:CLARO|NET)\s+[A-Za-z0-9_-]{3,})/i);
-            if (claroNetSpaced) {
-              return claroNetSpaced[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "CLARO_" : "NET_"));
-            }
-            const claroNetJoined = cleaned.match(/^((?:CLARO|NET)_[A-Za-z0-9_-]{3,})/i);
-            if (claroNetJoined) {
-              return claroNetJoined[1].trim().replace(/^(CLARO|NET)_+/i, (_, p) => (/^claro$/i.test(p) ? "CLARO_" : "NET_"));
-            }
-            return "";
-          };
-
-          capturedUser = normalizeClaroNetUser(afterColon) || normalizeClaroNetUser(nextLineAfterUser);
-
-          if (!capturedUser && afterColon) {
-            const tokenMatch = afterColon.match(/^([A-Za-z0-9_@.-]{3,})/);
-            if (tokenMatch && !/^(?:Senha|Pass|IP|MAC|S\/N|SN|BOX|CM|EMTA|FABR|P\/N|MODEL|DOCSIS|5GHz|2\.4GHz)$/i.test(tokenMatch[1])) {
-              capturedUser = tokenMatch[1].trim();
-            }
-          }
-          if (!capturedUser && nextLineAfterUser) {
-            const nextToken = nextLineAfterUser.match(/^([A-Za-z0-9_@.-]{3,})/);
-            if (nextToken && !/^(?:Senha|Pass|IP|MAC|S\/N|SN|BOX|CM|EMTA|FABR|P\/N|MODEL|DOCSIS|5GHz|2\.4GHz)$/i.test(nextToken[1])) {
-              capturedUser = nextToken[1].trim();
+        const userColonMatch = text.match(/(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)\s*:\s*([^\r\n]+)/i);
+        if (userColonMatch) {
+          capturedUser = formatEmtaUser(userColonMatch[1]);
+          if (!capturedUser) {
+            const idxLine = lines.findIndex((l) => /(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)\s*:/i.test(l));
+            if (idxLine !== -1 && lines[idxLine + 1]) {
+              capturedUser = formatEmtaUser(lines[idxLine + 1]);
             }
           }
         }
         if (!capturedUser) {
-          const explicitUserMatch = text.match(/(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)\s*[:;=-]?\s*((?:CLARO|NET)[_\s-][A-Za-z0-9_-]{3,}|[A-Za-z0-9_@.-]{3,})/i);
-          if (explicitUserMatch) {
-            const rawU = explicitUserMatch[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "CLARO_" : "NET_"));
-            if (!/^(?:Senha|Pass|IP|MAC|S\/N|SN|BOX|CM|EMTA|FABR|P\/N|MODEL|DOCSIS)$/i.test(rawU)) {
-              capturedUser = rawU;
-            }
+          const userWordIdx = lines.findIndex((l) => /(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)\b/i.test(l));
+          if (userWordIdx !== -1) {
+            capturedUser = formatEmtaUser(lines[userWordIdx]) || formatEmtaUser(lines[userWordIdx + 1] || "");
           }
         }
         if (capturedUser) {
           setIfFound("field_adminLogin", capturedUser, true);
         }
 
-        // 10. Senha do EMTA (sempre vem depois do Usuário) + Redes Wi-Fi (2.4GHz / 5GHz)
+        // 10. Senha do EMTA (sempre > 8 dígitos, ou seja, 9+ caracteres após Usuário) + Senha Wi-Fi + Redes Wi-Fi
         let adminPassCaptured = "";
         let wifi24Ssid = "";
         let wifi24Pass = "";
         let wifi5gSsid = "";
         let wifi5gPass = "";
 
-        // Captura estrita: somente quando o nome COMEÇA com Claro_ ou NET_ (ignora qualquer outro texto/modelo como Tg...)
         const matchStrictClaroNetSsid = (str) => {
           if (!str) return "";
           const cleaned = String(str).trim().replace(/^["']+|["']+$/g, "");
-          // Não aceita linhas de Usuário / Login / Senha / IP / MAC / S/N
           if (/^(?:Usu[aá]rio|User|Login|Senha|Pass|IP|MAC|S\/N|BOX|CM|EMTA|FABR|P\/N|MODEL|DOCSIS)\b/i.test(cleaned)) {
             return "";
           }
@@ -2086,30 +2065,38 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           return `${prefix}${rest}`;
         };
 
-        let sawUsuarioLine = false;
+        const allPassMatches = Array.from(text.matchAll(/Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{6,})/gi))
+          .map((m) => m[1].trim())
+          .filter(Boolean);
+
+        // Senha do EMTA: sempre tem MAIS que 8 dígitos (length >= 9), após Usuário
+        const afterUserBlockMatch = text.match(/(?:Usu[aáàâãäirl1]{2,}|User(?:name)?|Login)[\s\S]{0,140}?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{9,})/i);
+        if (afterUserBlockMatch) {
+          adminPassCaptured = afterUserBlockMatch[1].trim();
+        } else {
+          const longPass = allPassMatches.find((p) => p.length > 8);
+          if (longPass) {
+            adminPassCaptured = longPass;
+          }
+        }
+
+        // Senha do Wi-Fi: senha <= 8 dígitos (ou diferente da senha >8 do EMTA)
+        const shortOrWifiPass = allPassMatches.find((p) => p !== adminPassCaptured && p.length <= 8)
+          || allPassMatches.find((p) => p !== adminPassCaptured)
+          || "";
+        if (shortOrWifiPass) {
+          wifi24Pass = shortOrWifiPass;
+          wifi5gPass = shortOrWifiPass;
+        }
 
         for (let idx = 0; idx < lines.length; idx++) {
           const line = lines[idx];
           const nextLine = lines[idx + 1] || "";
 
-          // Identifica linha de Usuário (ex: Usuário: NET_D87528)
-          if (/(?:Usu[aá]rio|User(?:name)?|Login)\b/i.test(line)) {
-            sawUsuarioLine = true;
-            const inlinePassAfterUser = line.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*(?:CLARO|NET)[_\s-][A-Za-z0-9]+\s+Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
-            if (inlinePassAfterUser && !adminPassCaptured) {
-              adminPassCaptured = inlinePassAfterUser[1].trim();
-            }
-            continue;
-          }
-
-          // Captura SSIDs que começam com Claro_ ou NET_ (priorizando após 2.4 / 5.0 / GHz, mas também em qualquer linha que comece com Claro_ / NET_ e não seja Usuário)
           const ssidHere = matchStrictClaroNetSsid(line);
           const ssidNext = matchStrictClaroNetSsid(nextLine);
-          const is24Context = /2\.4/i.test(line) || /2G/i.test(line) || /2\.4/i.test(ssidHere) || /2G/i.test(ssidHere);
-          const is5gContext = /5\.0|5G/i.test(line) || /5\.0|5G/i.test(ssidHere);
 
-          if (ssidHere && !/2\.4|5\.0|GHz/i.test(line)) {
-            // Linha isolada começando com Claro_ ou NET_
+          if (ssidHere && !/2\.4|5\.0| GHz /i.test(line)) {
             if (/5\.0|5G/i.test(ssidHere) && !wifi5gSsid) wifi5gSsid = ssidHere;
             else if (!wifi24Ssid) wifi24Ssid = ssidHere;
             else if (!wifi5gSsid && ssidHere !== wifi24Ssid) wifi5gSsid = ssidHere;
@@ -2127,39 +2114,8 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
               }
             }
           }
-
-          // Senhas: distingue senha do Wi-Fi da senha do EMTA (após Usuário)
-          if (/^(?:Admin\s*)?Senha\b/i.test(line)) {
-            const m = line.match(/^(?:Admin\s*)?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
-            const pVal = m ? m[1].trim() : (nextLine && /^[A-Za-z0-9_@.-]{4,}$/.test(nextLine) ? nextLine.trim() : "");
-            if (pVal) {
-              if (/2\.4/i.test(line)) {
-                wifi24Pass = pVal;
-              } else if (/5\.0/i.test(line)) {
-                wifi5gPass = pVal;
-              } else if (sawUsuarioLine && !adminPassCaptured) {
-                adminPassCaptured = pVal;
-                sawUsuarioLine = false;
-              } else if (!wifi24Pass) {
-                wifi24Pass = pVal;
-              } else if (!wifi5gPass) {
-                wifi5gPass = pVal;
-              } else if (!adminPassCaptured) {
-                adminPassCaptured = pVal;
-              }
-            }
-          }
         }
 
-        // Busca direta por "Usuário ... Senha ..." em qualquer formato de quebra de linha/OCR
-        if (!adminPassCaptured) {
-          const afterUserRegex = text.match(/(?:Usu[aá]rio|User(?:name)?|Login)[\s\S]{0,90}?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
-          if (afterUserRegex) {
-            adminPassCaptured = afterUserRegex[1].trim();
-          }
-        }
-
-        // Extração direta de 2.4GHz e 5GHz mesmo quando há "Usuario:" ou "Senha:" na mesma linha
         const m24Direct = text.match(/2\.4\s*G(?:hz)?\s*[:;=-]?\s*([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)?)(?=\s+(?:5(?:\.0)?\s*G|Usu[aáirl1]{2,}|Senha|IP|S\/N|MAC)\b|$)/i);
         if (m24Direct && !wifi24Ssid) {
           wifi24Ssid = m24Direct[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "Claro_" : "NET_"));
@@ -2169,7 +2125,6 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           wifi5gSsid = m5gDirect[1].trim().replace(/^(CLARO|NET)\s+/i, (_, p) => (/^claro$/i.test(p) ? "Claro_" : "NET_"));
         }
 
-        // Fallback estrito: qualquer ocorrência começando com Claro_ ou NET_ após 2.4, 5.0 ou GHz
         if (!wifi24Ssid || !wifi5gSsid) {
           const anchorMatch = text.match(/(?:2\.4|5\.0|\bGHz\b)[\s\S]{0,220}/i);
           if (anchorMatch) {
@@ -2193,7 +2148,6 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           setIfFound("field_adminPass", adminPassCaptured, true);
         }
 
-        // Só preenche SSID Wi-Fi se começar com Claro_ ou NET_ e vier após 2.4 / 5.0 / GHz (ou começar estritamente com Claro_/NET_)
         if (wifi24Ssid) {
           setIfFound("field_wifiSsid", wifi24Ssid, true);
         } else {
@@ -2203,12 +2157,6 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
-        if (!wifi24Pass && !wifi5gPass) {
-          const anyPassMatch = text.match(/Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
-          if (anyPassMatch) {
-            wifi24Pass = anyPassMatch[1].trim();
-          }
-        }
         const chosenWifiPass = wifi24Pass || wifi5gPass;
         if (chosenWifiPass) setIfFound("field_wifiPass", chosenWifiPass, true);
 
