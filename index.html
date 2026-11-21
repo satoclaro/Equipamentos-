@@ -1213,6 +1213,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           <button id="btnImportJsonBtn" type="button" class="btn btn-ghost btn-sm">⬆ Importar JSON</button>
           <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none;" />
           <button id="btnExportJson" type="button" class="btn btn-ghost btn-sm">⬇ Exportar JSON</button>
+          <button id="btnExportPdf" type="button" class="btn btn-ghost btn-sm">📄 Baixar PDF</button>
           <button id="btnExportCsv" type="button" class="btn btn-ghost btn-sm">📊 Backup CSV</button>
           <button id="btnClearArchive" type="button" class="btn btn-danger btn-sm">🗑 Limpar Tudo</button>
         </div>
@@ -1242,7 +1243,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "3.0";
+      const APP_VERSION = "3.2";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2898,6 +2899,173 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast("Backup CSV gerado e baixado.");
+      });
+
+      
+      // Baixar PDF do Arquivo EMTA (geração direta no navegador, sem depender de internet ou pop-up)
+      function sanitizePdfAscii(str) {
+        return String(str || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^\x20-\x7E]/g, " ")
+          .replace(/\\/g, "\\\\")
+          .replace(/\(/g, "\\(")
+          .replace(/\)/g, "\\)");
+      }
+
+      function wrapPdfText(text, maxChars = 88) {
+        const words = String(text || "").split(/\s+/).filter(Boolean);
+        if (!words.length) return [""];
+        const lines = [];
+        let cur = "";
+        for (const w of words) {
+          if (!cur) {
+            cur = w;
+          } else if ((cur + " " + w).length <= maxChars) {
+            cur += " " + w;
+          } else {
+            lines.push(cur);
+            cur = w;
+          }
+        }
+        if (cur) lines.push(cur);
+        return lines;
+      }
+
+      function buildArchivePdfBytes(items, filterQuery = "") {
+        const pageWidth = 595.28; // A4 portrait (pt)
+        const pageHeight = 841.89;
+        const marginX = 40;
+        const topY = 800;
+        const bottomY = 48;
+        const lineHeight = 14;
+
+        const pagesLines = [];
+        let currentLines = [];
+        let y = topY;
+
+        const pushLine = (txt, font = "F1", size = 10, colorRgb = "0.1 0.14 0.2") => {
+          if (y < bottomY) {
+            pagesLines.push(currentLines);
+            currentLines = [];
+            y = topY;
+          }
+          const safe = sanitizePdfAscii(txt);
+          currentLines.push(`BT /${font} ${size} Tf ${colorRgb} rg ${marginX} ${y.toFixed(2)} Td (${safe}) Tj ET`);
+          y -= lineHeight;
+        };
+
+        const stampNow = formatBrazilDateTime(new Date());
+        pushLine(`EMTA CONFIG & SCANNER PRO - ARQUIVO DE EMTAS (v${APP_VERSION})`, "F2", 13, "0.05 0.25 0.55");
+        pushLine(`Gerado em: ${stampNow}  |  Autor: ${AUTHOR_NAME}  |  Total exibido: ${items.length}`, "F1", 9, "0.35 0.4 0.48");
+        if (filterQuery) {
+          pushLine(`Filtro aplicado: ${filterQuery}`, "F1", 9, "0.1 0.45 0.35");
+        }
+        pushLine("----------------------------------------------------------------------------------------", "F1", 9, "0.65 0.7 0.75");
+        y -= 4;
+
+        items.forEach((item, idx) => {
+          const title = item.voipOrClient || item.wifiSsid || item.macAddress || item.serialNumber || item.emtaModel || `Registro #${idx + 1}`;
+          for (const wl of wrapPdfText(`#${idx + 1} - ${title}  [${item.savedAt || ""}]`, 82)) {
+            pushLine(wl, "F2", 10.5, "0.06 0.1 0.18");
+          }
+
+          const detailLines = [
+            `IP/Gateway: ${item.gateway || "192.168.0.1"}  |  Login: ${item.adminLogin || "-"}  |  Pass Admin: ${item.adminPass || "-"}`,
+            `Wi-Fi 2.4G: ${item.wifiSsid || "-"}  |  Senha Wi-Fi: ${item.wifiPass || "-"}  |  Seguranca: ${item.wifiSecurity || "-"}`,
+            item.wifi5gSsid || item.wifi5gPass ? `Wi-Fi 5GHz: ${item.wifi5gSsid || "-"}  |  Senha 5GHz: ${item.wifi5gPass || "-"}` : null,
+            `MAC: ${item.macAddress || "-"}  |  Serial/SN: ${item.serialNumber || "-"}  |  Modelo: ${item.emtaModel || "-"}`,
+            (item.rfTx || item.rfRx || item.rfSnrDs || item.rfSnrUp)
+              ? `Niveis RF -> Tx: ${item.rfTx || "-"} dBmV | Rx: ${item.rfRx || "-"} dBmV | SNR DS: ${item.rfSnrDs || "-"} dB | SNR UP: ${item.rfSnrUp || "-"} dB`
+              : null,
+            item.notes ? `Obs: ${item.notes}` : null
+          ].filter(Boolean);
+
+          for (const dl of detailLines) {
+            for (const wl of wrapPdfText(dl, 90)) {
+              pushLine(wl, "F1", 9.5, "0.18 0.22 0.28");
+            }
+          }
+
+          y -= 6;
+          pushLine("........................................................................................", "F1", 8.5, "0.75 0.78 0.82");
+          y -= 4;
+        });
+
+        if (currentLines.length) {
+          pagesLines.push(currentLines);
+        }
+
+        // Monta estrutura PDF 1.4 válida
+        const objects = [];
+        // obj 1: Catalog
+        objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+        // obj 2: Pages (placeholder, preenchido após criar páginas)
+        objects.push("");
+        // obj 3: Font Helvetica
+        objects.push("3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n");
+        // obj 4: Font Helvetica-Bold
+        objects.push("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n");
+
+        const pageObjIds = [];
+        let nextObjId = 5;
+
+        for (const pLines of pagesLines) {
+          const contentStream = pLines.join("\n");
+          const contentBytesLen = new TextEncoder().encode(contentStream).length;
+          const contentObjId = nextObjId++;
+          const pageObjId = nextObjId++;
+          pageObjIds.push(pageObjId);
+
+          objects.push(
+            `${contentObjId} 0 obj\n<< /Length ${contentBytesLen} >>\nstream\n${contentStream}\nendstream\nendobj\n`
+          );
+          objects.push(
+            `${pageObjId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjId} 0 R >>\nendobj\n`
+          );
+        }
+
+        objects[1] = `2 0 obj\n<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjIds.length} >>\nendobj\n`;
+
+        let pdfStr = "%PDF-1.4\n";
+        const offsets = [0];
+        const encoder = new TextEncoder();
+
+        for (const obj of objects) {
+          offsets.push(encoder.encode(pdfStr).length);
+          pdfStr += obj;
+        }
+
+        const xrefStart = encoder.encode(pdfStr).length;
+        pdfStr += `xref\n0 ${objects.length + 1}\n`;
+        pdfStr += "0000000000 65535 f \n";
+        for (let i = 1; i <= objects.length; i++) {
+          const offStr = String(offsets[i]).padStart(10, "0");
+          pdfStr += `${offStr} 00000 n \n`;
+        }
+        pdfStr += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+        return encoder.encode(pdfStr);
+      }
+
+      document.getElementById("btnExportPdf")?.addEventListener("click", () => {
+        const filtered = getFilteredArchive();
+        if (!filtered.length) {
+          showToast("Nenhum registro no arquivo para gerar PDF.");
+          return;
+        }
+        const pdfBytes = buildArchivePdfBytes(filtered, (archiveSearchEl?.value || "").trim());
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = formatBrazilDateTime(new Date()).replace(/[^\d]/g, "");
+        a.href = url;
+        a.download = `arquivo-emta-${stamp}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        showToast(`PDF gerado com ${filtered.length} registro(s).`);
       });
 
       document.getElementById("btnClearArchive").addEventListener("click", () => {
