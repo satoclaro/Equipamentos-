@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "2.3";
+      const APP_VERSION = "2.4";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2007,12 +2007,12 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
-        // 9. Usuário / Login do 192.168.0.1 (sempre começa com CLARO_ ou NET_ quando presente)
-        const claroNetUserMatch = text.match(/\b((?:CLARO|NET)[_\s-][A-Za-z0-9]{4,})\b/i);
-        const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
+        // 9. Usuário / Login do 192.168.0.1 (sempre vem depois de "usuário:" ou ":")
+        const explicitUserAfterColonMatch = text.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*:\s*([A-Za-z0-9_@.-]{2,})/i);
+        const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*([A-Za-z0-9_@.-]{2,})/i);
         let capturedUser = "";
-        if (claroNetUserMatch) {
-          capturedUser = claroNetUserMatch[1].trim().toUpperCase().replace(/^(CLARO|NET)[\s-]+/, "$1_");
+        if (explicitUserAfterColonMatch) {
+          capturedUser = explicitUserAfterColonMatch[1].trim();
           setIfFound("field_adminLogin", capturedUser, true);
         } else if (loginMatch) {
           capturedUser = loginMatch[1].trim();
