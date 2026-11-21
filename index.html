@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "2.0";
+      const APP_VERSION = "2.3";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2019,7 +2019,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           setIfFound("field_adminLogin", capturedUser, true);
         }
 
-        // 10. Senha do EMTA (sempre vem depois do Usuário) + Redes Wi-Fi e Senhas Wi-Fi (após Network Name, Rede, 2.4, 5.0, GHz)
+        // 10. Senha do EMTA (sempre vem depois do Usuário) + Redes Wi-Fi (SOMENTE quando COMEÇA com Claro_ ou NET_)
         const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
         let adminPassCaptured = "";
         let wifi24Ssid = "";
@@ -2027,34 +2027,31 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         let wifi5gSsid = "";
         let wifi5gPass = "";
 
-        const extractTokenAfterKeyword = (str) => {
-          const m = str.match(/[:;=-]\s*([A-Za-z0-9_@.-]{2,})/);
-          return m ? m[1].trim() : "";
-        };
-
-        const normalizeSsid = (rawSsid) => {
-          if (!rawSsid) return "";
-          const cleaned = rawSsid.trim().replace(/^["']+|["']+$/g, "");
-          const m = cleaned.match(/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i);
-          if (m) return m[1].toUpperCase().replace(/^(CLARO|NET)[\s-]+/, "$1_");
-          return cleaned;
+        // Captura estrita: somente quando o nome COMEÇA com Claro_ ou NET_ (ignora qualquer outro texto/modelo como Tg...)
+        const matchStrictClaroNetSsid = (str) => {
+          if (!str) return "";
+          const cleaned = String(str).trim().replace(/^["']+|["']+$/g, "");
+          // Não aceita linhas de Usuário / Login / Senha / IP / MAC / S/N
+          if (/^(?:Usu[aá]rio|User|Login|Senha|Pass|IP|MAC|S\/N|BOX|CM|EMTA|FABR|P\/N|MODEL|DOCSIS)\b/i.test(cleaned)) {
+            return "";
+          }
+          const m = cleaned.match(/\b((?:CLARO|NET)_+[A-Za-z0-9_-]{2,})/i);
+          if (!m) return "";
+          const raw = m[1];
+          const prefix = raw.slice(0, 6).toUpperCase().startsWith("CLARO") ? "Claro_" : "NET_";
+          const rest = raw.replace(/^(?:CLARO|NET)_+/i, "");
+          return `${prefix}${rest}`;
         };
 
         let sawUsuarioLine = false;
-        let sawNetworkSection = false;
-        let pendingBand = null; // '24' ou '5g'
 
         for (let idx = 0; idx < lines.length; idx++) {
           const line = lines[idx];
           const nextLine = lines[idx + 1] || "";
 
-          if (/Network\s*Name|\bRede\b/i.test(line)) {
-            sawNetworkSection = true;
-          }
-
+          // Identifica linha de Usuário (ex: Usuário: NET_D87528)
           if (/(?:Usu[aá]rio|User(?:name)?|Login)\b/i.test(line)) {
             sawUsuarioLine = true;
-            // Se a senha estiver na mesma linha após o usuário
             const inlinePassAfterUser = line.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*(?:CLARO|NET)[_\s-][A-Za-z0-9]+\s+Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
             if (inlinePassAfterUser && !adminPassCaptured) {
               adminPassCaptured = inlinePassAfterUser[1].trim();
@@ -2062,76 +2059,40 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
             continue;
           }
 
-          // Detecta banda 2.4 / 2.4 GHz / 2G
-          if (/2\.?4\s*G(?:Hz)?|\b2G\b/i.test(line)) {
-            pendingBand = "24";
-            const afterBand = line.match(/2\.?4\s*G(?:Hz)?\s*[:;=-]?\s*([A-Za-z0-9_@.-]{3,})/i);
-            if (afterBand && !/^(?:GHz|Hz)$/i.test(afterBand[1])) {
-              wifi24Ssid = normalizeSsid(afterBand[1]);
-              pendingBand = null;
-            } else if (nextLine && !/^(?:5\.?0?\s*G|Senha|IP|Usu[aá]rio|BOX|CM|EMTA)/i.test(nextLine)) {
-              const cand = normalizeSsid(nextLine);
-              if (cand && !/^[0-9.]+\s*G(?:Hz)?$/i.test(cand)) {
-                wifi24Ssid = cand;
-                pendingBand = null;
+          // Captura SSIDs que começam com Claro_ ou NET_ (priorizando após 2.4 / 5.0 / GHz, mas também em qualquer linha que comece com Claro_ / NET_ e não seja Usuário)
+          const ssidHere = matchStrictClaroNetSsid(line);
+          const ssidNext = matchStrictClaroNetSsid(nextLine);
+          const is24Context = /2\.4/i.test(line) || /2G/i.test(line) || /2\.4/i.test(ssidHere) || /2G/i.test(ssidHere);
+          const is5gContext = /5\.0|5G/i.test(line) || /5\.0|5G/i.test(ssidHere);
+
+          if (ssidHere && !/2\.4|5\.0|GHz/i.test(line)) {
+            // Linha isolada começando com Claro_ ou NET_
+            if (/5\.0|5G/i.test(ssidHere) && !wifi5gSsid) wifi5gSsid = ssidHere;
+            else if (!wifi24Ssid) wifi24Ssid = ssidHere;
+            else if (!wifi5gSsid && ssidHere !== wifi24Ssid) wifi5gSsid = ssidHere;
+          }
+
+          if (/2\.4|5\.0|\bGHz\b/i.test(line)) {
+            const chosen = ssidHere || ssidNext;
+            if (chosen) {
+              if ((/5\.0|5G/i.test(line) || /5\.0|5G/i.test(chosen)) && !wifi5gSsid) {
+                wifi5gSsid = chosen;
+              } else if (!wifi24Ssid) {
+                wifi24Ssid = chosen;
+              } else if (!wifi5gSsid && chosen !== wifi24Ssid) {
+                wifi5gSsid = chosen;
               }
             }
-            continue;
           }
 
-          // Detecta banda 5.0 / 5 GHz / 5G
-          if (/5\.?0?\s*G(?:Hz)?|\b5G\b/i.test(line) && !/2\.?4/i.test(line)) {
-            pendingBand = "5g";
-            const afterBand = line.match(/5\.?0?\s*G(?:Hz)?\s*[:;=-]?\s*([A-Za-z0-9_@.-]{3,})/i);
-            if (afterBand && !/^(?:GHz|Hz)$/i.test(afterBand[1])) {
-              wifi5gSsid = normalizeSsid(afterBand[1]);
-              pendingBand = null;
-            } else if (nextLine && !/^(?:Senha|IP|Usu[aá]rio|BOX|CM|EMTA)/i.test(nextLine)) {
-              const cand = normalizeSsid(nextLine);
-              if (cand && !/^[0-9.]+\s*G(?:Hz)?$/i.test(cand)) {
-                wifi5gSsid = cand;
-                pendingBand = null;
-              }
-            }
-            continue;
-          }
-
-          // Linha genérica com "GHz" após Network Name / Rede
-          if (/\bGHz\b/i.test(line)) {
-            const afterGhz = extractTokenAfterKeyword(line);
-            const candidate = afterGhz || (/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i.test(line) ? normalizeSsid(line) : "");
-            if (candidate && !/^[0-9.]+$/i.test(candidate)) {
-              if (/5/i.test(line) && !wifi5gSsid) wifi5gSsid = normalizeSsid(candidate);
-              else if (!wifi24Ssid) wifi24Ssid = normalizeSsid(candidate);
-            } else if (nextLine && !/^(?:Senha|IP|Usu[aá]rio|BOX|CM|EMTA)/i.test(nextLine)) {
-              const nextNorm = normalizeSsid(nextLine);
-              if (nextNorm) {
-                if (/5/i.test(line) && !wifi5gSsid) wifi5gSsid = nextNorm;
-                else if (!wifi24Ssid) wifi24Ssid = nextNorm;
-              }
-            }
-            continue;
-          }
-
-          // Se estivermos aguardando o nome da rede na linha seguinte ao 2.4 / 5.0
-          if (pendingBand && !/^(?:Senha|IP|Usu[aá]rio|BOX|CM|EMTA)/i.test(line)) {
-            const norm = normalizeSsid(line);
-            if (norm) {
-              if (pendingBand === "24" && !wifi24Ssid) wifi24Ssid = norm;
-              if (pendingBand === "5g" && !wifi5gSsid) wifi5gSsid = norm;
-            }
-            pendingBand = null;
-            continue;
-          }
-
-          // Senhas: distingue senha do Wi-Fi (no bloco Network Name / Rede / 2.4 / 5.0) da senha do EMTA (após Usuário)
+          // Senhas: distingue senha do Wi-Fi da senha do EMTA (após Usuário)
           if (/^(?:Admin\s*)?Senha\b/i.test(line)) {
             const m = line.match(/^(?:Admin\s*)?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{4,})/i);
             const pVal = m ? m[1].trim() : (nextLine && /^[A-Za-z0-9_@.-]{4,}$/.test(nextLine) ? nextLine.trim() : "");
             if (pVal) {
-              if (/2\.?4\s*G/i.test(line)) {
+              if (/2\.4/i.test(line)) {
                 wifi24Pass = pVal;
-              } else if (/5\.?0?\s*G/i.test(line)) {
+              } else if (/5\.0/i.test(line)) {
                 wifi5gPass = pVal;
               } else if (sawUsuarioLine && !adminPassCaptured) {
                 adminPassCaptured = pVal;
@@ -2155,29 +2116,39 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
-        // Busca direta de redes CLARO_ / NET_ caso não tenham ficado em linhas separadas
+        // Fallback estrito: qualquer ocorrência começando com Claro_ ou NET_ após 2.4, 5.0 ou GHz
         if (!wifi24Ssid || !wifi5gSsid) {
-          const matches = Array.from(text.matchAll(/\b((?:CLARO|NET)[_\s-][A-Za-z0-9_-]{3,})\b/gi)).map((m) =>
-            normalizeSsid(m[1])
-          );
-          for (const item of matches) {
-            if (!wifi24Ssid && (/(?:2\.?4|2G)/i.test(item) || /2\.?4/i.test(text))) {
-              wifi24Ssid = item;
-            } else if (!wifi5gSsid && (/(?:5\.?0?G|5G)/i.test(item) || /5\.0/i.test(text))) {
-              wifi5gSsid = item;
+          const anchorMatch = text.match(/(?:2\.4|5\.0|\bGHz\b)[\s\S]{0,220}/i);
+          if (anchorMatch) {
+            const afterAnchorBlock = anchorMatch[0];
+            const strictMatches = Array.from(afterAnchorBlock.matchAll(/\b((?:CLARO|NET)_+[A-Za-z0-9_-]{2,})\b/gi))
+              .map((m) => matchStrictClaroNetSsid(m[1]))
+              .filter(Boolean);
+            for (const item of strictMatches) {
+              if (!wifi24Ssid && /2\.4|2G/i.test(item)) {
+                wifi24Ssid = item;
+              } else if (!wifi5gSsid && /5\.0|5G/i.test(item)) {
+                wifi5gSsid = item;
+              }
             }
+            if (!wifi24Ssid && strictMatches[0]) wifi24Ssid = strictMatches[0];
+            if (!wifi5gSsid && strictMatches[1] && strictMatches[1] !== wifi24Ssid) wifi5gSsid = strictMatches[1];
           }
-          if (!wifi24Ssid && matches[0]) wifi24Ssid = matches[0];
-          if (!wifi5gSsid && matches[1]) wifi5gSsid = matches[1];
         }
 
         if (adminPassCaptured) {
           setIfFound("field_adminPass", adminPassCaptured, true);
         }
 
-        const ssidGeneralMatch = text.match(/(?:SSID|Wi-?Fi\s*(?:Name|Nome)?|Rede|Network\s*Name)\s*[:;=-]\s*([A-Za-z0-9_@.-]+)/i);
-        const chosen24Ssid = wifi24Ssid || (ssidGeneralMatch ? normalizeSsid(ssidGeneralMatch[1]) : "");
-        if (chosen24Ssid) setIfFound("field_wifiSsid", chosen24Ssid, true);
+        // Só preenche SSID Wi-Fi se começar com Claro_ ou NET_ e vier após 2.4 / 5.0 / GHz (ou começar estritamente com Claro_/NET_)
+        if (wifi24Ssid) {
+          setIfFound("field_wifiSsid", wifi24Ssid, true);
+        } else {
+          const wifiSsidEl = document.getElementById("field_wifiSsid");
+          if (wifiSsidEl && !/^(?:Claro_|NET_)/i.test(wifiSsidEl.value.trim())) {
+            wifiSsidEl.value = "";
+          }
+        }
 
         const chosenWifiPass = wifi24Pass || wifi5gPass;
         if (chosenWifiPass) setIfFound("field_wifiPass", chosenWifiPass, true);
