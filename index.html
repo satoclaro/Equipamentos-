@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "1.7";
+      const APP_VERSION = "1.8";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2007,13 +2007,17 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
-        // 9. Usuário / Login do Painel (ex: Usuário: CLARO_5F14B6, Usuário: CLARO_73335D)
-        const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aá]rio|User(?:name)?|Login)\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
-        if (loginMatch) {
+        // 9. Usuário / Login do 192.168.0.1 (sempre começa com CLARO_ ou NET_ quando presente)
+        const claroNetUserMatch = text.match(/\b((?:CLARO|NET)[_\s-][A-Za-z0-9]{4,})\b/i);
+        const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
+        if (claroNetUserMatch) {
+          const normalizedUser = claroNetUserMatch[1].trim().toUpperCase().replace(/^(CLARO|NET)[\s-]+/, "$1_");
+          setIfFound("field_adminLogin", normalizedUser, true);
+        } else if (loginMatch) {
           setIfFound("field_adminLogin", loginMatch[1].trim(), true);
         }
 
-        // 10. Senhas (Painel vs 2G vs 5G) e SSIDs (2.4GHz / 2G e 5GHz / 5G)
+        // 10. Senhas (Painel 192.168.0.1 vs Wi-Fi 2.4G/5G) e SSIDs (2.4GHz / 5.0 Ghz / 2G / 5G)
         const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
         let adminPassCaptured = "";
         let wifi24Ssid = "";
@@ -2026,42 +2030,41 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           const line = lines[idx];
           const nextLine = lines[idx + 1] || "";
 
-          // SSID 2.4G / 2G
-          if (/SSID\s*2\.?4\s*GHz|REDE\s*WI-?FI\s*2\.?4\s*GHz|2\.4\s*GHz\s*[:=]|\b2\.4GHz\b/i.test(line)) {
-            const m = line.match(/(?:SSID\s*2\.?4\s*GHz|REDE\s*WI-?FI\s*2\.?4\s*GHz|2\.4\s*GHz)\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
+          // SSID 2.4G / 2.4 Ghz / 2G
+          if (/SSID\s*2\.?4\s*G(?:Hz)?|REDE\s*WI-?FI\s*2\.?4\s*G(?:Hz)?|2\.4\s*G(?:Hz)?\s*[:;=-]|\b2\.4\s*G(?:Hz)?\b/i.test(line)) {
+            const m = line.match(/(?:SSID\s*2\.?4\s*G(?:Hz)?|REDE\s*WI-?FI\s*2\.?4\s*G(?:Hz)?|2\.4\s*G(?:Hz)?)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
             if (m) {
               wifi24Ssid = m[1].trim();
-            } else if (/^2\.4GHz$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
+            } else if (/^2\.4\s*G(?:Hz)?[:;=-]?$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
               wifi24Ssid = nextLine;
             }
           }
 
-          // SSID 5GHz / 5G
-          if (/SSID\s*5\.?0?\s*GHz|REDE\s*WI-?FI\s*5\.?0?\s*GHz|5\.?0?\s*GHz\s*[:=]|\b5GHz\b/i.test(line)) {
-            const m = line.match(/(?:SSID\s*5\.?0?\s*GHz|REDE\s*WI-?FI\s*5\.?0?\s*GHz|5\.?0?\s*GHz)\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
+          // SSID 5.0 Ghz / 5GHz / 5G
+          if (/SSID\s*5\.?0?\s*G(?:Hz)?|REDE\s*WI-?FI\s*5\.?0?\s*G(?:Hz)?|5\.0?\s*G(?:Hz)?\s*[:;=-]|\b5\.0?\s*G(?:Hz)?\b/i.test(line)) {
+            const m = line.match(/(?:SSID\s*5\.?0?\s*G(?:Hz)?|REDE\s*WI-?FI\s*5\.?0?\s*G(?:Hz)?|5\.0?\s*G(?:Hz)?)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
             if (m) {
               wifi5gSsid = m[1].trim();
-            } else if (/^5GHz$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
+            } else if (/^5\.0?\s*G(?:Hz)?[:;=-]?$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
               wifi5gSsid = nextLine;
             }
           }
 
           // Senha específica 2.4GHz ou 5GHz na mesma linha
-          if (/SENHA\s*2\.?4\s*GHz/i.test(line)) {
-            const m = line.match(/SENHA\s*2\.?4\s*GHz\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
+          if (/SENHA\s*2\.?4\s*G(?:Hz)?/i.test(line)) {
+            const m = line.match(/SENHA\s*2\.?4\s*G(?:Hz)?\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
             if (m) wifi24Pass = m[1].trim();
           }
-          if (/SENHA\s*5\.?0?\s*GHz/i.test(line)) {
-            const m = line.match(/SENHA\s*5\.?0?\s*GHz\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
+          if (/SENHA\s*5\.?0?\s*G(?:Hz)?/i.test(line)) {
+            const m = line.match(/SENHA\s*5\.?0?\s*G(?:Hz)?\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
             if (m) wifi5gPass = m[1].trim();
           }
 
-          // Linha "Senha: ..." (ex: Senha: B4F2675F14B6 ou Senha: 5D73335D ou Senha: A8705D73335D)
-          if (/^(?:Admin\s*)?Senha\s*[:=]?/i.test(line) && !/2\.?4|5\.?0?G/i.test(line)) {
-            const m = line.match(/^(?:Admin\s*)?Senha\s*[:=]?\s*([A-Za-z0-9_@.-]+)/i);
+          // Linha "Senha: ..." (ex: Senha: 5D73335D, Senha: A8705D73335D, Senha: 4BD87528, Senha: BC644BD87528)
+          if (/^(?:Admin\s*)?Senha\b/i.test(line) && !/2\.?4|5\.?0?G/i.test(line)) {
+            const m = line.match(/^(?:Admin\s*)?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
             if (m) {
               const pVal = m[1].trim();
-              // Na coluna esquerda (2G/5G): ex. 675F14B6 ou 5D73335D; na coluna direita/painel: B4F2675F14B6 ou A8705D73335D
               if (!adminPassCaptured && pVal.length >= 10) {
                 adminPassCaptured = pVal;
               } else if (!wifi24Pass) {
@@ -2073,28 +2076,12 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
-        if (!wifi24Ssid) {
-          const s24 = text.match(/\b([A-Za-z0-9_.-]*2G[A-Za-z0-9_.-]*)\b/);
-          if (s24) wifi24Ssid = s24[1];
+        if (!adminPassCaptured) {
+          const passAfterUserMatch = text.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*(?:CLARO|NET)[_\s-][A-Za-z0-9]{4,}[\s\S]{0,60}?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{6,})/i);
+          if (passAfterUserMatch) {
+            adminPassCaptured = passAfterUserMatch[1].trim();
+          }
         }
-        if (!wifi5gSsid) {
-          const s5 = text.match(/\b([A-Za-z0-9_.-]*5G[A-Za-z0-9_.-]*)\b/);
-          if (s5) wifi5gSsid = s5[1];
-        }
-
-        if (adminPassCaptured) {
-          setIfFound("field_adminPass", adminPassCaptured, true);
-        }
-
-        const ssidGeneralMatch = text.match(/(?:SSID|Wi-?Fi\s*(?:Name|Nome)?|Rede)\s*[:=]\s*([A-Za-z0-9_@.-]+)/i);
-        const chosen24Ssid = wifi24Ssid || (ssidGeneralMatch ? ssidGeneralMatch[1].trim() : "");
-        if (chosen24Ssid) setIfFound("field_wifiSsid", chosen24Ssid, true);
-
-        const chosenWifiPass = wifi24Pass || genericWifiPass || wifi5gPass || adminPassCaptured;
-        if (chosenWifiPass) setIfFound("field_wifiPass", chosenWifiPass, true);
-
-        if (wifi5gSsid) setIfFound("field_wifi5gSsid", wifi5gSsid, true);
-        if (wifi5gPass || wifi24Pass) setIfFound("field_wifi5gPass", wifi5gPass || wifi24Pass, true);
 
         // 11. MAC Address (CM MAC vs EMTA MAC)
         const cmMacMatch = text.match(/CM\s*MAC\s*[:=]?\s*([0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}|[0-9A-Fa-f]{12})/i);
@@ -2142,15 +2129,19 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
             });
           }
           const timeStr = formatBrazilDateTime(new Date()).split(" - ")[1];
+          const summaryText = formatEmtaSummary(collectEmtaData());
+          if (summaryText && summaryText.trim()) {
+            copyToClipboard(summaryText, null, "Dados do EMTA").catch(() => {});
+          }
           let savedDirect = false;
           if (mode === "auto" && autoSaveCapturedCheckbox && autoSaveCapturedCheckbox.checked) {
             savedDirect = saveCurrentEmtaToArchive({ silent: true, allowDuplicate: false });
           }
           lastScanBanner.textContent = savedDirect
-            ? `⚡ Capturado e salvo no arquivo às ${timeStr}: ${updatedFields.size} campo(s) preenchido(s).`
-            : `⚡ Capturado às ${timeStr}: ${updatedFields.size} campo(s) preenchido(s) automaticamente.`;
+            ? `⚡ Capturado, copiado e salvo às ${timeStr}: ${updatedFields.size} campo(s) preenchido(s).`
+            : `⚡ Capturado e copiado às ${timeStr}: ${updatedFields.size} campo(s) preenchido(s) automaticamente.`;
           if (mode === "manual") {
-            showToast(`Capturado e preenchido (${updatedFields.size} campo(s)).`);
+            showToast(`Capturado e copiado (${updatedFields.size} campo(s)).`);
           }
         } else if (mode === "manual") {
           const notesEl = document.getElementById("field_notes");
