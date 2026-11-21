@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "2.4";
+      const APP_VERSION = "2.5";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -1818,7 +1818,12 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
             setCameraDiag(`Lendo texto da etiqueta (${sourceLabel}) via OCR...`, "warn");
             const ocrRes = await window.Tesseract.recognize(dataUrl, "por+eng");
             const ocrText = (ocrRes?.data?.text || "").trim();
-            if (ocrText) combinedText += "\n" + ocrText;
+            if (ocrText) {
+              combinedText += "\n" + ocrText;
+              if (rawScanInput && !rawScanInput.value.trim()) {
+                rawScanInput.value = ocrText;
+              }
+            }
           } catch (_) {}
         }
 
@@ -2008,14 +2013,28 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         }
 
         // 9. Usuário / Login do 192.168.0.1 (sempre vem depois de "usuário:" ou ":")
-        const explicitUserAfterColonMatch = text.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*:\s*([A-Za-z0-9_@.-]{2,})/i);
-        const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*([A-Za-z0-9_@.-]{2,})/i);
         let capturedUser = "";
-        if (explicitUserAfterColonMatch) {
-          capturedUser = explicitUserAfterColonMatch[1].trim();
-          setIfFound("field_adminLogin", capturedUser, true);
-        } else if (loginMatch) {
-          capturedUser = loginMatch[1].trim();
+        const userLine = lines.find((l) => /(?:Usu[aáirl1]{2,}|User(?:name)?|Login)\s*[:;=-]/i.test(l));
+        if (userLine) {
+          const afterColon = userLine.split(":").slice(1).join(":").trim();
+          const tokenMatch = afterColon.match(/^([A-Za-z0-9_@.-]{2,})/);
+          if (tokenMatch) {
+            capturedUser = tokenMatch[1].trim();
+          }
+        }
+        if (!capturedUser) {
+          const explicitUserAfterColonMatch = text.match(/(?:Usu[aáirl1]{2,}|User(?:name)?|Login)\s*:\s*([A-Za-z0-9_@.-]{2,})/i);
+          if (explicitUserAfterColonMatch) {
+            capturedUser = explicitUserAfterColonMatch[1].trim();
+          }
+        }
+        if (!capturedUser) {
+          const loginMatch = text.match(/(?:Admin\s*)?(?:Usu[aáirl1]{2,}|User(?:name)?|Login)\s*[:;=-]?\s*([A-Za-z0-9_@.-]{2,})/i);
+          if (loginMatch) {
+            capturedUser = loginMatch[1].trim();
+          }
+        }
+        if (capturedUser) {
           setIfFound("field_adminLogin", capturedUser, true);
         }
 
