@@ -1,12 +1,10 @@
-# EMTA Config & Scanner Pro (v1.2)
+# EMTA Config & Scanner Pro (v1.3)
 
 Ferramenta HTML para técnicos de telecomunicações em campo.
 
-## Novidades da Versão 1.2
-- **Correção e Diagnóstico da Câmera**: adiciona fallback automático de restrições de vídeo, exibição explícita do `<video>`, diagnóstico detalhado de permissão/contexto seguro (`HTTPS` / `localhost`) e botão **Câmera Nativa / Foto** (`<input type="file" accept="image/*" capture="environment">`) com leitura de código da foto capturada.
-- **Níveis RF da Empresa**:
-  - **Tx**: `38 dBmV` à `51 dBmV`
-  - **Rx**: `-12 dBmV` à `12 dBmV`
-  - **SNR DS**: maior que `35 dB` (`> 35 dB`)
-  - **SNR UP**: maior que `27 dB` (`> 27 dB`)
-- **Rodapé Atualizado**: `Criado por Fernando Sato - Versão 1.2 - 20.11.26 - 21:11`.
+## Novidades da Versão 1.3
+- **Abertura da Câmera Corrigida (`getUserMedia` + fallback de dispositivos + ZXing)**:
+  - Usa `getUserMedia` direto com sequência de fallbacks (`facingMode` ideal -> exato -> `video: true` -> enumeração de câmeras `enumerateDevices` por `deviceId`), evitando falhas quando o aparelho/navegador rejeita restrições de resolução ou foco no `start()`.
+  - Integra `decodeFromVideoDevice` / `decodeFromStream` do ZXing após o stream de vídeo estar ativo e em reprodução.
+  - Inclui alternância de câmera, controle de luz (`torch`), toque no vídeo para focar, captura de foto e fallback por **Câmera Nativa / Foto**.
+- **Rodapé Atualizado**: `Criado por Fernando Sato - Versão 1.3 - 20.11.26 - 21:29`.
