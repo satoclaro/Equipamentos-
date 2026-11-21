@@ -772,19 +772,55 @@
   </header>
 
   <main>
-    <!-- Barra Rápida 192.168.0.1 -->
+    <!-- Barra Rápida 192.168.0.1 + Campos Rápidos de Acesso e Wi-Fi -->
     <section class="gateway-banner" aria-label="Acesso rápido ao gateway">
-      <div class="gateway-info">
-        <span style="font-weight: 600; font-size: 0.92rem;">Página de Configuração do Modem / EMTA:</span>
-        <span id="gatewayUrlText" class="gateway-ip">http://192.168.0.1</span>
+      <div style="width:100%; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="gateway-info">
+          <span style="font-weight: 600; font-size: 0.92rem;">Página de Configuração do Modem / EMTA:</span>
+          <span id="gatewayUrlText" class="gateway-ip">http://192.168.0.1</span>
+        </div>
+        <div class="gateway-buttons">
+          <button type="button" class="btn btn-ghost btn-sm" data-copy-target="gatewayUrlText" data-copy-type="text">
+            📋 Copiar IP / URL
+          </button>
+          <a href="http://192.168.0.1" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            ↗ Acessar 192.168.0.1
+          </a>
+        </div>
       </div>
-      <div class="gateway-buttons">
-        <button type="button" class="btn btn-ghost btn-sm" data-copy-target="gatewayUrlText" data-copy-type="text">
-          📋 Copiar IP / URL
-        </button>
-        <a href="http://192.168.0.1" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
-          ↗ Acessar 192.168.0.1
-        </a>
+
+      <div style="width:100%; margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.22); display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px;">
+        <div class="field-card" style="padding:10px;">
+          <span class="field-label">Usuário IP (192.168.0.1)</span>
+          <div class="field-input-row">
+            <input id="banner_adminLogin" type="text" value="admin" placeholder="Usuário do 192.168.0.1" />
+            <button type="button" class="copy-btn" data-copy-input="banner_adminLogin">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card" style="padding:10px;">
+          <span class="field-label">Senha do Usuário</span>
+          <div class="field-input-row">
+            <input id="banner_adminPass" type="text" placeholder="Senha do usuário" />
+            <button type="button" class="copy-btn" data-copy-input="banner_adminPass">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card" style="padding:10px;">
+          <span class="field-label">Nome da Rede Wi-Fi</span>
+          <div class="field-input-row">
+            <input id="banner_wifiSsid" type="text" placeholder="Nome da rede Wi-Fi" />
+            <button type="button" class="copy-btn" data-copy-input="banner_wifiSsid">Copiar</button>
+          </div>
+        </div>
+
+        <div class="field-card" style="padding:10px;">
+          <span class="field-label">Senha Wi-Fi</span>
+          <div class="field-input-row">
+            <input id="banner_wifiPass" type="text" placeholder="Senha do Wi-Fi" />
+            <button type="button" class="copy-btn" data-copy-input="banner_wifiPass">Copiar</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1206,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "1.6";
+      const APP_VERSION = "1.7";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -2098,6 +2134,13 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         }
 
         if (updatedFields.size > 0) {
+          if (typeof BANNER_SYNC_PAIRS !== "undefined") {
+            BANNER_SYNC_PAIRS.forEach(([bannerId, fieldId]) => {
+              const bannerEl = document.getElementById(bannerId);
+              const fieldEl = document.getElementById(fieldId);
+              if (bannerEl && fieldEl) bannerEl.value = fieldEl.value;
+            });
+          }
           const timeStr = formatBrazilDateTime(new Date()).split(" - ")[1];
           let savedDirect = false;
           if (mode === "auto" && autoSaveCapturedCheckbox && autoSaveCapturedCheckbox.checked) {
@@ -2370,6 +2413,12 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         rfSnrDsInput.value = data.rfSnrDs || data.rfSnr || "";
         rfSnrUpInput.value = data.rfSnrUp || "";
         evaluateRfLevels();
+
+        BANNER_SYNC_PAIRS.forEach(([bannerId, fieldId]) => {
+          const bannerEl = document.getElementById(bannerId);
+          const fieldEl = document.getElementById(fieldId);
+          if (bannerEl && fieldEl) bannerEl.value = fieldEl.value;
+        });
       }
 
       function formatEmtaSummary(data, savedAt = null) {
@@ -2411,19 +2460,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       });
 
       document.getElementById("btnClearFields").addEventListener("click", () => {
-        FIELD_IDS.forEach((id) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          if (id === "field_gateway") el.value = "192.168.0.1";
-          else if (id === "field_adminLogin") el.value = "admin";
-          else if (id === "field_wifiSecurity") el.value = "WPA2/WPA3-PSK";
-          else el.value = "";
-        });
-        rfTxInput.value = "";
-        rfRxInput.value = "";
-        rfSnrDsInput.value = "";
-        rfSnrUpInput.value = "";
-        evaluateRfLevels();
+        resetAllInputsForNextConsult();
         showToast("Campos resetados para padrão.");
       });
 
@@ -2595,8 +2632,70 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         return true;
       }
 
+      // Sincronização bidirecional entre campos rápidos junto ao 192.168.0.1 e campos principais
+      const BANNER_SYNC_PAIRS = [
+        ["banner_adminLogin", "field_adminLogin"],
+        ["banner_adminPass", "field_adminPass"],
+        ["banner_wifiSsid", "field_wifiSsid"],
+        ["banner_wifiPass", "field_wifiPass"]
+      ];
+
+      let isSyncingBannerFields = false;
+      function syncPairValues(sourceEl, targetEl) {
+        if (!sourceEl || !targetEl || isSyncingBannerFields) return;
+        isSyncingBannerFields = true;
+        targetEl.value = sourceEl.value;
+        isSyncingBannerFields = false;
+      }
+
+      BANNER_SYNC_PAIRS.forEach(([bannerId, fieldId]) => {
+        const bannerEl = document.getElementById(bannerId);
+        const fieldEl = document.getElementById(fieldId);
+        if (bannerEl && fieldEl) {
+          bannerEl.addEventListener("input", () => syncPairValues(bannerEl, fieldEl));
+          fieldEl.addEventListener("input", () => syncPairValues(fieldEl, bannerEl));
+        }
+      });
+
+      function resetAllInputsForNextConsult() {
+        FIELD_IDS.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (id === "field_gateway") el.value = "192.168.0.1";
+          else if (id === "field_adminLogin") el.value = "admin";
+          else if (id === "field_wifiSecurity") el.value = "WPA2/WPA3-PSK";
+          else el.value = "";
+        });
+
+        BANNER_SYNC_PAIRS.forEach(([bannerId, fieldId]) => {
+          const bannerEl = document.getElementById(bannerId);
+          const fieldEl = document.getElementById(fieldId);
+          if (bannerEl && fieldEl) {
+            bannerEl.value = fieldEl.value;
+          }
+        });
+
+        rfTxInput.value = "";
+        rfRxInput.value = "";
+        rfSnrDsInput.value = "";
+        rfSnrUpInput.value = "";
+        evaluateRfLevels();
+
+        rawScanInput.value = "";
+        lastScanBanner.textContent = "";
+        capturedImage.src = "";
+        capturedPreviewBox.style.display = "none";
+        lastAutoSaveSignature = "";
+      }
+
       document.getElementById("btnSaveEmtaArchive").addEventListener("click", () => {
-        saveCurrentEmtaToArchive({ silent: false, allowDuplicate: true });
+        const saved = saveCurrentEmtaToArchive({ silent: true, allowDuplicate: true });
+        if (!saved) {
+          showToast("Preencha ao menos SSID, senha, MAC, Serial, Sinais RF ou OS antes de arquivar.");
+          return;
+        }
+        resetAllInputsForNextConsult();
+        showToast("EMTA arquivado e campos limpos para nova consulta!");
       });
 
       document.getElementById("btnCaptureAndSaveNow").addEventListener("click", () => {
