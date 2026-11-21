@@ -1242,7 +1242,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
       "use strict";
 
       // Metadados automáticos de versão, data e hora no carregamento/atualização
-      const APP_VERSION = "1.8";
+      const APP_VERSION = "1.9";
       const AUTHOR_NAME = "Fernando Sato";
 
       function formatBrazilDateTime(dateObj) {
@@ -1954,20 +1954,20 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           setIfFound("field_manufacturer", formattedMfg, true);
         }
 
-        // 3. DOCSIS (ex: DOCSIS 3.1, D3.1, DOCSIS 3.0)
-        const docsisMatch = text.match(/\b(DOCSIS\s*3\.[01]|D3\.[01])\b/i);
+        // 3. DOCSIS (sempre D3.1 ou D3.0)
+        const docsisMatch = text.match(/\b(?:DOCSIS\s*3\.(1|0)|D3\.(1|0))\b/i);
         if (docsisMatch) {
-          const dVal = docsisMatch[1].toUpperCase().replace(/^D3\./, "DOCSIS 3.").replace(/DOCSIS(\d)/, "DOCSIS $1");
-          setIfFound("field_docsis", dVal, true);
+          const ver = docsisMatch[1] || docsisMatch[2];
+          setIfFound("field_docsis", `D3.${ver}`, true);
         }
 
         // 4. Modelo / EMTA (ex: MODEL: CH8568 DOCSIS 3 1 HW 1.0, Model: TG3442, MODEL F@ST3895, HGB10R-02)
-        const modelLineMatch = text.match(/(?:MODEL(?:O)?|EMTA)\s*[:=]?\s*([^\r\n|]+)/i);
+        const modelLineMatch = text.match(/(?:MODEL(?:O)?|EMTA)\s*[:;=-]?\s*([^\r\n|]+)/i);
         if (modelLineMatch) {
           const cleanModel = modelLineMatch[1].replace(/\b(INPUT|FABR|S\/N|CM\s*MAC|EMTA\s*MAC)\b.*$/i, "").trim();
           setIfFound("field_emtaModel", cleanModel || modelLineMatch[1].trim(), true);
         } else {
-          const docsisModelMatch = text.match(/\b((?:F@ST|ST|TG|CH|HGB|CG)[A-Z0-9@-]{2,}(?:\s+(?:Claro|NET|DOCSIS\s*3\.[01]|HW\s*[0-9.]+))*)\b/i);
+          const docsisModelMatch = text.match(/\b((?:F@ST|ST|TG|CH|HGB|CG)[A-Z0-9@-]{2,}(?:\s+(?:Claro|NET|DOCSIS\s*3\.[01]|D3\.[01]|HW\s*[0-9.]+))*)\b/i);
           if (docsisModelMatch) {
             setIfFound("field_emtaModel", docsisModelMatch[1].trim(), true);
           } else if (mfgMatch) {
@@ -1988,7 +1988,7 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
         }
 
         // 7. Voltagem / Alimentação (INPUT 12V DC 42W, 3.5A ou 12V 2.5A)
-        const voltInputMatch = text.match(/INPUT\s*[:=]?\s*(\d+\s*V(?:\s*DC)?(?:\s*,?\s*[\d.]+\s*W)?(?:\s*,?\s*[\d.]+\s*A)?)/i);
+        const voltInputMatch = text.match(/INPUT\s*[:;=-]?\s*(\d+\s*V(?:\s*DC)?(?:\s*,?\s*[\d.]+\s*W)?(?:\s*,?\s*[\d.]+\s*A)?)/i);
         const voltSimpleMatch = text.match(/\b(\d{1,2}\s*V(?:\s*DC)?\s*[\d.]+\s*A)\b/i);
         if (voltInputMatch) {
           setIfFound("field_voltage", voltInputMatch[1].trim().replace(/\s+/g, " "), true);
@@ -2017,36 +2017,66 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           setIfFound("field_adminLogin", loginMatch[1].trim(), true);
         }
 
-        // 10. Senhas (Painel 192.168.0.1 vs Wi-Fi 2.4G/5G) e SSIDs (2.4GHz / 5.0 Ghz / 2G / 5G)
+        // 10. Redes Wi-Fi (sempre começando com CLARO_ ou NET_, identificando 2G, 5G, 2.4 GHz, 5 GHz, GHz) e Senhas
         const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
         let adminPassCaptured = "";
         let wifi24Ssid = "";
         let wifi24Pass = "";
         let wifi5gSsid = "";
         let wifi5gPass = "";
-        let genericWifiPass = "";
+
+        const normalizeClaroNetSsid = (rawSsid) => {
+          if (!rawSsid) return "";
+          const cleaned = rawSsid.trim().replace(/^["']+|["']+$/g, "");
+          const m = cleaned.match(/^((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i);
+          return m ? m[1].toUpperCase().replace(/^(CLARO|NET)[\s-]+/, "$1_") : cleaned;
+        };
+
+        // Busca direta por SSIDs começando com CLARO_ ou NET_ com marcadores 2G / 5G / 2.4 GHz / 5 GHz / GHz
+        const allClaroNetSsids = Array.from(text.matchAll(/\b((?:CLARO|NET)[_\s-][A-Za-z0-9_-]{3,})\b/gi)).map((m) =>
+          m[1].trim().toUpperCase().replace(/^(CLARO|NET)[\s-]+/, "$1_")
+        );
+
+        for (const ssidCandidate of allClaroNetSsids) {
+          if (!wifi24Ssid && (/(?:2\.?4|2G)/i.test(ssidCandidate) || /2\.?4\s*G(?:Hz)?/i.test(text))) {
+            wifi24Ssid = ssidCandidate;
+          }
+          if (!wifi5gSsid && (/(?:5\.?0?G|5G)/i.test(ssidCandidate) || /5\.?0?\s*G(?:Hz)?/i.test(text))) {
+            wifi5gSsid = ssidCandidate;
+          }
+        }
 
         for (let idx = 0; idx < lines.length; idx++) {
           const line = lines[idx];
           const nextLine = lines[idx + 1] || "";
 
-          // SSID 2.4G / 2.4 Ghz / 2G
-          if (/SSID\s*2\.?4\s*G(?:Hz)?|REDE\s*WI-?FI\s*2\.?4\s*G(?:Hz)?|2\.4\s*G(?:Hz)?\s*[:;=-]|\b2\.4\s*G(?:Hz)?\b/i.test(line)) {
-            const m = line.match(/(?:SSID\s*2\.?4\s*G(?:Hz)?|REDE\s*WI-?FI\s*2\.?4\s*G(?:Hz)?|2\.4\s*G(?:Hz)?)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
-            if (m) {
-              wifi24Ssid = m[1].trim();
-            } else if (/^2\.4\s*G(?:Hz)?[:;=-]?$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
-              wifi24Ssid = nextLine;
+          // Linhas com 2.4 GHz / 2.4Ghz / 2G e CLARO_ / NET_
+          if (/2\.?4\s*G(?:Hz)?|\b2G\b/i.test(line)) {
+            const m = line.match(/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i) || line.match(/(?:SSID|REDE|2\.?4\s*G(?:Hz)?|2G)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
+            if (m && !/^[0-9.]+\s*G(?:Hz)?$/i.test(m[1])) {
+              wifi24Ssid = normalizeClaroNetSsid(m[1]);
+            } else if (/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i.test(nextLine)) {
+              wifi24Ssid = normalizeClaroNetSsid(nextLine);
             }
           }
 
-          // SSID 5.0 Ghz / 5GHz / 5G
-          if (/SSID\s*5\.?0?\s*G(?:Hz)?|REDE\s*WI-?FI\s*5\.?0?\s*G(?:Hz)?|5\.0?\s*G(?:Hz)?\s*[:;=-]|\b5\.0?\s*G(?:Hz)?\b/i.test(line)) {
-            const m = line.match(/(?:SSID\s*5\.?0?\s*G(?:Hz)?|REDE\s*WI-?FI\s*5\.?0?\s*G(?:Hz)?|5\.0?\s*G(?:Hz)?)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
+          // Linhas com 5 GHz / 5.0 GHz / 5G e CLARO_ / NET_
+          if (/5\.?0?\s*G(?:Hz)?|\b5G\b/i.test(line) && !/2\.?4/i.test(line)) {
+            const m = line.match(/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i) || line.match(/(?:SSID|REDE|5\.?0?\s*G(?:Hz)?|5G)\s*[:;=-]?\s*([A-Za-z0-9_@.-]+)/i);
+            if (m && !/^[0-9.]+\s*G(?:Hz)?$/i.test(m[1])) {
+              wifi5gSsid = normalizeClaroNetSsid(m[1]);
+            } else if (/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i.test(nextLine)) {
+              wifi5gSsid = normalizeClaroNetSsid(nextLine);
+            }
+          }
+
+          // Linhas genéricas com "GHz" (ex: GHz: CLARO_... ou NET_...)
+          if (/\bGHz\b/i.test(line)) {
+            const m = line.match(/((?:CLARO|NET)[_\s-][A-Za-z0-9_-]+)/i);
             if (m) {
-              wifi5gSsid = m[1].trim();
-            } else if (/^5\.0?\s*G(?:Hz)?[:;=-]?$/i.test(line) && /^[A-Za-z0-9_@.-]+$/.test(nextLine)) {
-              wifi5gSsid = nextLine;
+              const norm = normalizeClaroNetSsid(m[1]);
+              if (/5/i.test(line) && !wifi5gSsid) wifi5gSsid = norm;
+              else if (!wifi24Ssid) wifi24Ssid = norm;
             }
           }
 
@@ -2076,12 +2106,33 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
           }
         }
 
+        if (!wifi24Ssid && allClaroNetSsids.length > 0) {
+          wifi24Ssid = allClaroNetSsids[0];
+        }
+        if (!wifi5gSsid && allClaroNetSsids.length > 1) {
+          wifi5gSsid = allClaroNetSsids[1];
+        }
+
         if (!adminPassCaptured) {
           const passAfterUserMatch = text.match(/(?:Usu[aá]rio|User(?:name)?|Login)\s*[:;=-]?\s*(?:CLARO|NET)[_\s-][A-Za-z0-9]{4,}[\s\S]{0,60}?Senha\s*[:;=-]?\s*([A-Za-z0-9_@.-]{6,})/i);
           if (passAfterUserMatch) {
             adminPassCaptured = passAfterUserMatch[1].trim();
           }
         }
+
+        if (adminPassCaptured) {
+          setIfFound("field_adminPass", adminPassCaptured, true);
+        }
+
+        const ssidGeneralMatch = text.match(/(?:SSID|Wi-?Fi\s*(?:Name|Nome)?|Rede)\s*[:=]\s*([A-Za-z0-9_@.-]+)/i);
+        const chosen24Ssid = wifi24Ssid || (ssidGeneralMatch ? normalizeClaroNetSsid(ssidGeneralMatch[1]) : "");
+        if (chosen24Ssid) setIfFound("field_wifiSsid", chosen24Ssid, true);
+
+        const chosenWifiPass = wifi24Pass || wifi5gPass || adminPassCaptured;
+        if (chosenWifiPass) setIfFound("field_wifiPass", chosenWifiPass, true);
+
+        if (wifi5gSsid) setIfFound("field_wifi5gSsid", wifi5gSsid, true);
+        if (wifi5gPass || wifi24Pass) setIfFound("field_wifi5gPass", wifi5gPass || wifi24Pass, true);
 
         // 11. MAC Address (CM MAC vs EMTA MAC)
         const cmMacMatch = text.match(/CM\s*MAC\s*[:=]?\s*([0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}|[0-9A-Fa-f]{12})/i);
@@ -2156,16 +2207,21 @@ Admin User: admin | Admin Pass: @dm1n#2026 | MAC: A4:2B:8C:11:22:33"></textarea>
 
       let immediateParseTimer = null;
       function scheduleImmediateParse(mode = "auto") {
+        const currentNow = rawScanInput.value.trim();
+        if (currentNow) {
+          parseRawInput(currentNow, mode);
+        }
         clearTimeout(immediateParseTimer);
         immediateParseTimer = setTimeout(() => {
           const current = rawScanInput.value.trim();
           if (current) {
             parseRawInput(current, mode);
           }
-        }, 120);
+        }, 80);
       }
 
       rawScanInput.addEventListener("input", () => scheduleImmediateParse("auto"));
+      rawScanInput.addEventListener("change", () => scheduleImmediateParse("auto"));
       rawScanInput.addEventListener("paste", () => {
         setTimeout(() => {
           const current = rawScanInput.value.trim();
